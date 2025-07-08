@@ -3,7 +3,10 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
+import { apiBaseUrl } from './config/index'
+
 function App() {
+  console.log(apiBaseUrl);
   const [count, setCount] = useState(0)
 
   return (
