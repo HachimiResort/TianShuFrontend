@@ -1,5 +1,5 @@
 import type React from "react"
-import { lazy, Suspense } from "react"
+import {  Suspense } from "react"
 import { Navigate } from "react-router-dom"
 import { AppLayout } from "@/components/layout/app-layout"
 import { AuthLayout } from "@/components/layout/auth-layout"
