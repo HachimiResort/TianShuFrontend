@@ -68,7 +68,7 @@ jobs:
       with:
         context: ./docker
         push: true
-        tags: ${{ env.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_DOCKER_HUB_USER }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        tags: ${{ env.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_DOCKER_HUB_NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
     # 8. 设置 SSH 密钥，用于连接服务器
     - name: Setup SSH Agent
@@ -88,7 +88,7 @@ jobs:
       run: |
         ssh root@${{ secrets.SERVER_HOST }} << 'EOF'
           REGISTRY="${{ env.ALIYUN_REGISTRY }}"
-          USER="${{ secrets.ALIYUN_DOCKER_HUB_USER }}"
+          USER="${{ secrets.ALIYUN_DOCKER_HUB_NAMESPACE }}"
           IMAGE_NAME="${{ env.IMAGE_NAME }}"
           IMAGE_TAG="${{ env.IMAGE_TAG }}"
           PORT="${{ env.PORT }}"
