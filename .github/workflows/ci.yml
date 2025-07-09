@@ -8,43 +8,52 @@ on:
   pull_request:
     branches: [ "main" ] # 当有 PR 合并到 main 分支时触发
 
+# 环境变量，在这里配置你的项目信息
 env:
   ALIYUN_REGISTRY: crpi-1kkkjpeehkoxqf8e.cn-shanghai.personal.cr.aliyuncs.com
-  
-  # 项目特定的镜像名称和端口
   IMAGE_NAME: tianshufrontend       
   IMAGE_TAG: latest                 
-  PORT: 5173                    
+  PORT: 5173                        # 你的项目端口，Nginx 和 Docker 都会使用这个端口
 
+# 定义一个名为 build-and-deploy 的 Job（任务）
 jobs:
   build-and-deploy:
+    # 运行此任务的虚拟机环境
     runs-on: ubuntu-latest
 
+    # 任务步骤
     steps:
+    # 1. 拉取代码
     - name: Checkout repository
       uses: actions/checkout@v3
     
+    # 2. 设置 Node.js 环境
     - name: Setup Node.js 20.x
       uses: actions/setup-node@v3
       with:
         node-version: 20
 
+    # 3. 安装 pnpm
     - name: Install pnpm
       run: npm install -g pnpm
         
+    # 4. (可选) 设置后端的 API 地址
     - name: Set API URL for Production
-      if: secrets.API_HOST
+      # --- 这里是修正的地方 ---
+      # 检查 secret 是否存在的 if 条件必须使用 ${{ }} 语法
+      if: ${{ secrets.API_HOST }}
       run: |
         echo "VITE_API_BASE_URL='https://${{ secrets.API_HOST }}'" >> .env.production
         echo "API URL has been set in .env.production"
           
+    # 5. 安装依赖并打包项目
     - name: Build project
       run: |
         pnpm install
         pnpm run build
-        # 将打包好的 dist 目录复制到 docker 上下文中，以便构建镜像
         cp -r ./dist ./docker/
 
+    # 6. 登录到阿里云容器镜像服务
     - name: Login to Aliyun Container Registry
       if: github.event_name == 'push'
       uses: docker/login-action@v2
@@ -59,17 +68,17 @@ jobs:
       uses: docker/build-push-action@v3
       with:
         context: ./docker
-        push: true # 只有在上面登录成功后才会推送
+        push: true
         tags: ${{ env.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_DOCKER_HUB_USER }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
     # 8. 设置 SSH 密钥，用于连接服务器
     - name: Setup SSH Agent
       if: github.event_name == 'push'
-      uses: webfactory/ssh-agent@v0.5.4 # 使用较新版本
+      uses: webfactory/ssh-agent@v0.5.4
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
     
-    # 9. 将服务器的公钥添加到 known_hosts，防止 SSH 首次连接询问
+    # 9. 将服务器的公钥添加到 known_hosts
     - name: Add remote server to known hosts
       if: github.event_name == 'push'
       run: ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
@@ -78,9 +87,7 @@ jobs:
     - name: Deploy to Server
       if: github.event_name == 'push'
       run: |
-        # 使用 SSH 连接到你的服务器并执行一系列部署命令
         ssh root@${{ secrets.SERVER_HOST }} << 'EOF'
-          # 定义变量，方便管理
           REGISTRY="${{ env.ALIYUN_REGISTRY }}"
           USER="${{ secrets.ALIYUN_DOCKER_HUB_USER }}"
           IMAGE_NAME="${{ env.IMAGE_NAME }}"
