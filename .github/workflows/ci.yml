@@ -37,14 +37,13 @@ jobs:
     - name: Install pnpm
       run: npm install -g pnpm
         
-    # 4. (可选) 设置后端的 API 地址
-    - name: Set API URL for Production
-      # --- 这里是修正的地方 ---
-      # 检查 secret 是否存在的 if 条件必须使用 ${{ }} 语法
-      if: ${{ secrets.API_HOST }}
+    # 4. (可选) 设置后端的 API 地址 - 已完全修正
+    - name: 设置项目API地址
       run: |
-        echo "VITE_API_BASE_URL='https://${{ secrets.API_HOST }}'" >> .env.production
-        echo "API URL has been set in .env.production"
+          if [ -n "${{ secrets.API_HOST }}" ]; then
+            # 使用设置中的接口地址
+            echo -e "\nVITE_API_BASE_URL='https://${{ secrets.API_HOST }}'" >> .env.production
+          fi
           
     # 5. 安装依赖并打包项目
     - name: Build project
@@ -113,4 +112,3 @@ jobs:
           
           echo ">>> 部署完成！"
         EOF
-
