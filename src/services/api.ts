@@ -19,7 +19,7 @@ class ApiService {
     const defaultHeaders = {
       "Content-Type": "application/json",
       // 如果有token，通常会在这里统一添加
-      // 'Authorization': `Bearer ${your_token}`
+      'Authorization': `Bearer ${localStorage.getItem("token")}` || ""
     }
 
     try {
@@ -84,6 +84,15 @@ class ApiService {
       body: JSON.stringify(body),
     })
   }
+
+  public put<T>(endpoint: string, body: unknown, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: "PUT",
+      body: JSON.stringify(body),
+    })
+  }
+
 }
 
 // 导出一个单例，在整个应用中共享使用

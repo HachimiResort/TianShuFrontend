@@ -48,7 +48,7 @@ export function useAuth() {
       const response = await apiService.post<LoginResponse>("/auth/login", credentials)
       console.log("Login response:", response)
 
-      if (response.data && response.data?.code===0) {
+      if (response.success && response.data?.code===0) {
         // setUser(response.data.code===)
         const token = `${response.data.message.token_type} ${response.data.message.access_token}`
         localStorage.setItem("token", token)
