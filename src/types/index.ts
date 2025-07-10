@@ -4,7 +4,6 @@
 // --Response请求体的格式--------
 // --Request是返回response的格式-
 
-
 export interface User {
   id: string
   username: string
@@ -13,22 +12,9 @@ export interface User {
   phone?: string
 }
 
-
-
-
-export interface AuthResponse {
-  user: User
-  token: string
-}
-
 export interface ApiResponse<T = any> {
   success: boolean
   data?: T
   message?: string
   error?: string
-}2
-
-export interface UserRequest {
-  name: string
-  age: number
 }
