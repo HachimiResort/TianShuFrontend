@@ -8,13 +8,15 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { User, Mail, Phone, Shield, Edit, Save, X } from "lucide-react"
 import { useState } from "react"
+import { useAuth } from "@/hooks/use-auth"
+
 
 // 模拟用户数据
 const mockUser = {
   username: "张三",
   email: "zhangsan@example.com",
   phone: "138****8888", // 可能为空
-  role: "user", // "user" | "admin"
+  role: "admin", // "user" | "admin"
   avatar: "/placeholder.svg?height=100&width=100",
   joinDate: "2024-01-15",
   lastLogin: "2024-12-10 14:30:25",
