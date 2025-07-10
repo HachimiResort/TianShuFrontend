@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
-import { Toast } from "@/components/ui/toast"
+// import { Toast } from "@/components/ui/toast"
 import { User, Mail, Lock, UserPlus } from "lucide-react"
 
 interface RegisterFormProps {
@@ -16,11 +16,13 @@ interface RegisterFormProps {
 }
 
 export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
+  
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
     confirmPassword: "",
+    region: "+86"
   })
   const [showToast, setShowToast] = useState<{
     show: boolean
@@ -73,6 +75,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
         message: "注册成功！",
         variant: "success",
       })
+      setTimeout(() => {
+        onSwitchToLogin()
+      }, 1000)
     } else {
       setShowToast({
         show: true,
@@ -186,8 +191,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           </p>
         </div>
       </Card>
-
-      {showToast.show && <Toast variant={showToast.variant}>{showToast.message}</Toast>}
+      {showToast.show}
     </>
   )
 }

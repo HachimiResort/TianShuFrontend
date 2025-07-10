@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
-import { Toast } from "@/components/ui/toast"
+// import { Toast } from "@/components/ui/toast"
 import { User, Lock } from "lucide-react"
 
 interface LoginFormProps {
@@ -128,8 +128,7 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           </p>
         </div>
       </Card>
-
-      {showToast.show && <Toast variant={showToast.variant}>{showToast.message}</Toast>}
+      {showToast.show}
     </>
   )
 }

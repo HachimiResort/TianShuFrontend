@@ -1,22 +1,20 @@
 // 通用类型定义
+
+// ------------------------------
+// --Response请求体的格式--------
+// --Request是返回response的格式-
+
+
 export interface User {
   id: string
   username: string
   email: string
   createdAt: string
+  phone?: string
 }
 
-export interface LoginRequest {
-  username: string
-  password: string
-}
 
-export interface RegisterRequest {
-  username: string
-  email: string
-  password: string
-  confirmPassword: string
-}
+
 
 export interface AuthResponse {
   user: User
@@ -28,4 +26,9 @@ export interface ApiResponse<T = any> {
   data?: T
   message?: string
   error?: string
+}2
+
+export interface UserRequest {
+  name: string
+  age: number
 }
