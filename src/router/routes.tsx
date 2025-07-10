@@ -1,14 +1,15 @@
 import type React from "react"
-import {  Suspense } from "react"
+import { lazy, Suspense } from "react"
 import { Navigate } from "react-router-dom"
-import { AppLayout } from "@/components/layout/app-layout"
 import { AuthLayout } from "@/components/layout/auth-layout"
+import { DashboardLayout } from "@/components/layout/dashboard-layout" // Updated import
 import { Login } from "@/pages/Login"
 
-// // 使用React.lazy进行代码分割
-// const Dashboard = lazy(() => import("@/pages/dashboard"))
-// const Profile = lazy(() => import("@/pages/profile"))
-// const NotFound = lazy(() => import("@/pages/not-found"))
+
+// 使用React.lazy进行代码分割
+const Dashboard = lazy(() => import("@/pages/DashBoard"))
+const Profile = lazy(() => import("@/pages/profile"))
+const NotFound = lazy(() => import("@/pages/not-found"))
 
 // 加载状态组件
 const PageLoading = () => <div className="flex h-screen items-center justify-center">加载中...</div>
@@ -36,7 +37,7 @@ export const routes: RouteConfig[] = [
   },
   {
     path: "/",
-    element: <AppLayout />,
+    element: <DashboardLayout />, // Updated element
     meta: {
       requiresAuth: true,
     },
@@ -45,7 +46,7 @@ export const routes: RouteConfig[] = [
         path: "dashboard",
         element: (
           <Suspense fallback={<PageLoading />}>
-            {/* <Dashboard /> */}
+            <Dashboard />
           </Suspense>
         ),
         meta: {
@@ -56,7 +57,7 @@ export const routes: RouteConfig[] = [
         path: "profile",
         element: (
           <Suspense fallback={<PageLoading />}>
-            {/* <Profile /> */}
+            <Profile />
           </Suspense>
         ),
         meta: {
@@ -82,7 +83,7 @@ export const routes: RouteConfig[] = [
     path: "*",
     element: (
       <Suspense fallback={<PageLoading />}>
-        {/* <NotFound /> */}
+        <NotFound />
       </Suspense>
     ),
     meta: {

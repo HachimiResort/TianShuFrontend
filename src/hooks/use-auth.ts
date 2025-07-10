@@ -2,7 +2,38 @@
 
 import { useState } from "react"
 import { apiService } from "@/services/api"
-import type { LoginRequest, RegisterRequest, User } from "@/types"
+import type { User } from "@/types"
+
+
+export interface RegisterRequest {
+  username: string
+  email: string
+  password: string
+  confirmPassword: string
+  region: string
+  phonenumber?: string
+}
+
+export interface RegisterResponse {
+  code : number
+  message : {
+    error ?: string 
+  }
+}
+
+export interface LoginRequest {
+  username: string
+  password: string
+}
+
+export interface LoginResponse {
+  code: number
+  message : { 
+    access_token: string
+    token_type: string
+  }
+}
+
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -14,11 +45,13 @@ export function useAuth() {
     setError(null)
 
     try {
-      const response = await apiService.login(credentials)
+      const response = await apiService.post<LoginResponse>("/auth/login", credentials)
+      console.log("Login response:", response)
 
-      if (response.success && response.data) {
-        setUser(response.data.user)
-        localStorage.setItem("token", response.data.token)
+      if (response.data && response.data?.code===0) {
+        // setUser(response.data.code===)
+        const token = `${response.data.message.token_type} ${response.data.message.access_token}`
+        localStorage.setItem("token", token)
         return { success: true }
       } else {
         setError(response.error || "Login failed")
@@ -38,11 +71,10 @@ export function useAuth() {
     setError(null)
 
     try {
-      const response = await apiService.register(userData)
+      const response = await apiService.post<RegisterResponse>('/auth/register',userData)
 
-      if (response.success && response.data) {
-        setUser(response.data.user)
-        localStorage.setItem("token", response.data.token)
+      if (response.data && response.data.code===0) {
+        // setUser(response.data.)
         return { success: true }
       } else {
         setError(response.error || "Registration failed")
