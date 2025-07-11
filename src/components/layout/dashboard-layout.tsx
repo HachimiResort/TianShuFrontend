@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom"
+import {Outlet, useLocation} from "react-router-dom"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import {
@@ -10,9 +10,34 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
-
+import { sidebarConfig } from "@/config/sidebar";
 
 export function DashboardLayout() {
+
+  const location = useLocation();
+  const currentPath = location.pathname.split("/").pop();
+  const getBreadcrumbItems = () => {
+    const currentItem = sidebarConfig.find(item => item.url.split("/").pop() === currentPath);
+    return (
+        <>
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink href="/dashboard">天枢系统</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          {currentItem ? (
+              <BreadcrumbItem>
+                <BreadcrumbPage>{currentItem.title}</BreadcrumbPage>
+              </BreadcrumbItem>
+          ) : (
+              <BreadcrumbItem>
+                <BreadcrumbPage>未知页面</BreadcrumbPage>
+              </BreadcrumbItem>
+          )}
+        </>
+    );
+  };
+
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -22,13 +47,8 @@ export function DashboardLayout() {
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">天枢系统</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>仪表盘</BreadcrumbPage>
-              </BreadcrumbItem>
+
+              {getBreadcrumbItems()}
             </BreadcrumbList>
           </Breadcrumb>
         </header>
