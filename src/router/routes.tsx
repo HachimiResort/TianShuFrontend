@@ -38,9 +38,6 @@ export const routes: RouteConfig[] = [
   {
     path: "/",
     element: <DashboardLayout />, // Updated element
-    meta: {
-      requiresAuth: true,
-    },
     children: [
       {
         path: "dashboard",
@@ -51,6 +48,7 @@ export const routes: RouteConfig[] = [
         ),
         meta: {
           title: "仪表盘",
+          requiresAuth: true,
         },
       },
       {
@@ -62,6 +60,7 @@ export const routes: RouteConfig[] = [
         ),
         meta: {
           title: "个人资料",
+          requiresAuth: true,
         },
       },
     ],
@@ -75,6 +74,7 @@ export const routes: RouteConfig[] = [
         element: <Login />,
         meta: {
           title: "登录",
+          requiresAuth: false,
         },
       },
     ],
@@ -88,6 +88,7 @@ export const routes: RouteConfig[] = [
     ),
     meta: {
       title: "页面未找到",
+      requiresAuth: false,
     },
   },
 ]
