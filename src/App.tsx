@@ -1,8 +1,9 @@
 import { BrowserRouter } from "react-router-dom"
 import { AppRouter } from "@/router"
 import { ThemeProvider } from "@/components/theme-context"
-// import { Toaster } from "@/components/ui/toaster"
+// import { MapExample } from "@/components/map/MapExample"
 import "./index.css"
+
 
 function App() {
   return (
@@ -13,5 +14,12 @@ function App() {
     </BrowserRouter>
   )
 }
+
+// function App() {
+//   return (
+//     <MapExample />
+//   )
+// }
+
 
 export default App

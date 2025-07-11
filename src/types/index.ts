@@ -29,3 +29,10 @@ export interface UserInfoResponse {
     is_admin: boolean;
   };
 }
+
+export interface GetMeResponse {
+    code: string
+    message: {
+      role: string
+    }
+}

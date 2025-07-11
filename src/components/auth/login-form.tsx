@@ -46,6 +46,7 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     }
 
     const result = await login(formData)
+    console.log("result",result)
 
     if (result.success) {
       setShowToast({
