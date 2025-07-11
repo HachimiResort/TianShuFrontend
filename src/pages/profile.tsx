@@ -11,6 +11,7 @@ import { useState, useEffect } from "react"
 import { useUserInfo } from "@/hooks/use-auth"
 import type {ApiResponse, UserInfoResponse} from "@/types";
 import {apiService} from "@/services/api.ts";
+import {toast} from "@/components/ui/use-toast.tsx";
 
 export default function Profile() {
   const [isEditing, setIsEditing] = useState(false)
@@ -65,8 +66,21 @@ export default function Profile() {
       };
       const response: ApiResponse<UserInfoResponse> = await apiService.put('/auth/updateProfile', body);
       if (response.success && response.data) {
-        //console.log("用户信息更新成功:", response.data);
-        // 更新本地状态
+        console.log("response",response)
+        if (response.data.code==0) {
+          toast({
+            description: "更新成功！",
+            variant: "success",
+            duration: 2000,
+          })
+        }else{
+          toast({
+            description: "更新失败！",
+            variant: "destructive",
+            duration: 2000,
+          })
+        }
+
         setFormData({
           ...formData,
           username: response.data.message.username,
@@ -74,7 +88,13 @@ export default function Profile() {
           phone: response.data.message.phonenumber || ""
         });
       } else {
+        toast({
+          description: "更新失败！",
+          variant: "destructive",
+          duration: 2000,
+        })
         setError(response.error || "更新用户信息失败");
+
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "更新用户信息失败";

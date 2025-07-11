@@ -3,6 +3,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Activity, Users, Building2, TrendingUp } from "lucide-react"
 
+
+
 const stats = [
   {
     title: "总用户数",
@@ -34,6 +36,8 @@ const stats = [
   },
 ]
 
+
+
 export default function Dashboard() {
   return (
     <div className="p-6 space-y-6 animate-in fade-in-0 duration-500">
@@ -59,13 +63,15 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground transition-colors duration-300 ease-in-out">
                 {stat.description}
               </p>
+
             </CardContent>
           </Card>
         ))}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 hover:shadow-lg animate-in slide-in-from-left-4 transition-all duration-300 ease-in-out">
+        <Card
+            className="col-span-4 hover:shadow-lg animate-in slide-in-from-left-4 transition-all duration-300 ease-in-out">
           <CardHeader>
             <CardTitle className="transition-colors duration-300 ease-in-out">系统概览</CardTitle>
             <CardDescription className="transition-colors duration-300 ease-in-out">
@@ -73,13 +79,15 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
-            <div className="h-[200px] flex items-center justify-center text-muted-foreground transition-colors duration-300 ease-in-out">
+            <div
+                className="h-[200px] flex items-center justify-center text-muted-foreground transition-colors duration-300 ease-in-out">
               图表区域 - 可集成 Chart.js 或其他图表库
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-3 hover:shadow-lg animate-in slide-in-from-right-4 transition-all duration-300 ease-in-out">
+        <Card
+            className="col-span-3 hover:shadow-lg animate-in slide-in-from-right-4 transition-all duration-300 ease-in-out">
           <CardHeader>
             <CardTitle className="transition-colors duration-300 ease-in-out">最近活动</CardTitle>
             <CardDescription className="transition-colors duration-300 ease-in-out">系统最新动态</CardDescription>
@@ -87,29 +95,31 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {[
-                { time: "2分钟前", event: "用户 张三 登录系统" },
-                { time: "5分钟前", event: "智慧城市节点 #156 上线" },
-                { time: "10分钟前", event: "系统备份完成" },
-                { time: "15分钟前", event: "新用户注册" },
+                {time: "2分钟前", event: "用户 张三 登录系统"},
+                {time: "5分钟前", event: "智慧城市节点 #156 上线"},
+                {time: "10分钟前", event: "系统备份完成"},
+                {time: "15分钟前", event: "新用户注册"},
               ].map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-center space-x-4 animate-in fade-in-0 slide-in-from-bottom-2"
-                >
-                  <div className="w-2 h-2 bg-primary rounded-full transition-colors duration-300 ease-in-out"></div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none transition-colors duration-300 ease-in-out">
-                      {activity.event}
-                    </p>
-                    <p className="text-sm text-muted-foreground transition-colors duration-300 ease-in-out">
-                      {activity.time}
-                    </p>
+                  <div
+                      key={index}
+                      className="flex items-center space-x-4 animate-in fade-in-0 slide-in-from-bottom-2"
+                  >
+                    <div className="w-2 h-2 bg-primary rounded-full transition-colors duration-300 ease-in-out"></div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none transition-colors duration-300 ease-in-out">
+                        {activity.event}
+                      </p>
+                      <p className="text-sm text-muted-foreground transition-colors duration-300 ease-in-out">
+                        {activity.time}
+                      </p>
+                    </div>
                   </div>
-                </div>
               ))}
             </div>
           </CardContent>
         </Card>
+
+
       </div>
     </div>
   )
