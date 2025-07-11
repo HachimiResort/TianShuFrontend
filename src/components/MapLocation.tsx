@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import  { useEffect, useState } from 'react';
 import  { Map as ReactMap, type MapProps ,Marker, Popup, Source, Layer} from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 interface Location {
@@ -69,6 +69,7 @@ export function MapLocation() {
             setLineArray(processAdjacencyMatrix(matrix_data,data))
         } catch (err) {
             setError('Failed to fetch locations');
+            console.log(error);
             console.error(err);
         }
         };
