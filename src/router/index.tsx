@@ -3,7 +3,6 @@
 import { useEffect } from "react"
 import { useRoutes, useNavigate, useLocation } from "react-router-dom"
 import { routes, type RouteConfig } from "./routes"
-import {toast} from "@/components/ui/use-toast.tsx";
 
 // 获取用户是否已认证的函数
 const isAuthenticated = (): boolean => {
