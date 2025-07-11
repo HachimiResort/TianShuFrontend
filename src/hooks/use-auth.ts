@@ -52,6 +52,7 @@ export function useAuth() {
         // setUser(response.data.code===)
         const token = `${response.data.message.token_type} ${response.data.message.access_token}`
         localStorage.setItem("token", token)
+        console.log("Token stored in localStorage:", token)
         return { success: true }
       } else {
         setError(response.error || "Login failed")

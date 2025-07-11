@@ -10,6 +10,7 @@ import { Login } from "@/pages/Login"
 const Dashboard = lazy(() => import("@/pages/DashBoard"))
 const Profile = lazy(() => import("@/pages/profile"))
 const NotFound = lazy(() => import("@/pages/not-found"))
+const LocationPage = lazy(() => import("@/pages/Location"))
 
 // 加载状态组件
 const PageLoading = () => <div className="flex h-screen items-center justify-center">加载中...</div>
@@ -78,6 +79,17 @@ export const routes: RouteConfig[] = [
         },
       },
     ],
+  },
+  {
+    path: "location",
+    element: (
+      <Suspense fallback={<PageLoading />}>
+        <LocationPage/>
+      </Suspense>
+    ),
+    meta: {
+      title: "测试地图",
+    },
   },
   {
     path: "*",
