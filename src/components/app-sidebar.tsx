@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { Link, useLocation } from "react-router-dom"
-import { sidebarConfig } from "@/config/sidebar"
+import { adminsidebarConfig ,usersidebarConfig} from "@/config/sidebar"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import {
   Sidebar,
@@ -21,11 +21,29 @@ import {
 import { User, LogOut, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUserInfo } from "@/hooks/use-auth"
+import {apiService} from "@/services/api.ts";
+import {useEffect, useState} from "react";
+
+
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
   const userid = localStorage.getItem("userid")
   const { userInfo, loading, error } = useUserInfo(userid || "")
+  const [sidebarConfig, setSidebarConfig] = useState(usersidebarConfig);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+        const response = await apiService.get('/auth/me');
+        console.log("response",response)
+        if (response.success && response.data) {
+          const role = response.data.message.role;
+          setSidebarConfig(role === 'admin' ? adminsidebarConfig : usersidebarConfig);
+        }
+    };
+
+    fetchUserRole();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token")
@@ -75,7 +93,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <User className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  
+
                   {loading ? (
                       <span className="truncate font-semibold">加载中...</span>
                   ) : error ? (
