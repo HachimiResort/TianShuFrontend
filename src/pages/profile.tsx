@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { User, Mail, Phone, Shield, Edit, Save, X } from "lucide-react"
 import { useState, useEffect } from "react"
-import { useAuth } from "@/hooks/use-auth"
 import { useUserInfo } from "@/hooks/use-auth"
 import type {ApiResponse, UserInfoResponse} from "@/types";
 import {apiService} from "@/services/api.ts";
@@ -25,7 +24,7 @@ export default function Profile() {
     joinDate: "",
     lastLogin: ""
   })
-  const { user } = useAuth()
+
   const userid = localStorage.getItem("userid")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

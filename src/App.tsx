@@ -6,15 +6,13 @@ import "./index.css"
 
 function App() {
   return (
-      <div>
-          <BrowserRouter>
-              <ThemeProvider>
-                  <AppRouter />
-                  <Toaster />
-              </ThemeProvider>
-          </BrowserRouter>
-          <Toaster />
-      </div>
+
+        <BrowserRouter>
+          <ThemeProvider>
+              <AppRouter />
+              <Toaster />
+          </ThemeProvider>
+        </BrowserRouter>
 
   )
 }

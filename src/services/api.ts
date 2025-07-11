@@ -1,5 +1,5 @@
 import { config } from "@/config"
-import type {ApiResponse, UserInfoResponse} from "@/types"
+import type { ApiResponse } from "@/types"
 
 class ApiService {
   private baseURL: string
