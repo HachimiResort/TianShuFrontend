@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import { apiService } from "@/services/api"
 import type { User } from "@/types"
+import { useState, useEffect } from "react";
+import { apiService } from "@/services/api";
+import type { ApiResponse, UserInfoResponse } from "@/types";
 
 
 export interface RegisterRequest {
@@ -28,7 +29,8 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   code: number
-  message : { 
+  message : {
+    userid: number
     access_token: string
     token_type: string
   }
@@ -50,8 +52,11 @@ export function useAuth() {
 
       if (response.success && response.data?.code===0) {
         // setUser(response.data.code===)
-        const token = `${response.data.message.token_type} ${response.data.message.access_token}`
+        const token = `${response.data.message.access_token}`
+        const userid = response.data.message.userid.toString() // 提取 userid 并转换为字符串
+        console.log(token)
         localStorage.setItem("token", token)
+        localStorage.setItem("userid", userid)
         return { success: true }
       } else {
         setError(response.error || "Login failed")
@@ -102,4 +107,32 @@ export function useAuth() {
     register,
     logout,
   }
+}
+
+export function useUserInfo(userid: string) {
+  const [userInfo, setUserInfo] = useState<UserInfoResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response: ApiResponse<UserInfoResponse> = await apiService.get<UserInfoResponse>(`/auth/user/${userid}`);
+        if (response.success && response.data) {
+          setUserInfo(response.data);
+        } else {
+          setError(response.error || "获取用户信息失败");
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "获取用户信息失败";
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserInfo();
+  }, [userid]);
+
+  return { userInfo, loading, error };
 }

@@ -1,5 +1,5 @@
 import { config } from "@/config"
-import type { ApiResponse } from "@/types"
+import type {ApiResponse, UserInfoResponse} from "@/types"
 
 class ApiService {
   private baseURL: string
@@ -92,6 +92,7 @@ class ApiService {
       body: JSON.stringify(body),
     })
   }
+
 
 }
 

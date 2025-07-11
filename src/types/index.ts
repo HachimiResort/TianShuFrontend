@@ -18,3 +18,14 @@ export interface ApiResponse<T = any> {
   message?: string
   error?: string
 }
+
+export interface UserInfoResponse {
+  code: number;
+  message: {
+    username: string;
+    email: string;
+    phonenumber: string;
+    userid: number;
+    is_admin: boolean;
+  };
+}
