@@ -10,14 +10,39 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
-import { sidebarConfig } from "@/config/sidebar";
+import { usersidebarConfig,adminsidebarConfig } from "@/config/sidebar";
+import { useEffect, useState } from 'react';
+import {apiService} from "@/services/api.ts";
 
 export function DashboardLayout() {
-
+  const [sidebarConfig, setSidebarConfig] = useState(usersidebarConfig);
+  const [loading, setLoading] = useState(true);
   const location = useLocation();
   const currentPath = location.pathname.split("/").pop();
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const response = await apiService.get('/auth/me');
+        if (response.success && response.data) {
+          const role = response.data.message.role;
+          setSidebarConfig(role === 'admin' ? adminsidebarConfig : usersidebarConfig);
+        }
+      } catch (err) {
+        // 忽略错误，使用默认配置
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserRole();
+  }, []);
+
   const getBreadcrumbItems = () => {
+    if (loading) return null; // 或显示加载状态
+
     const currentItem = sidebarConfig.find(item => item.url.split("/").pop() === currentPath);
+    console.log("currentItem",currentItem)
     return (
         <>
           <BreadcrumbItem className="hidden md:block">

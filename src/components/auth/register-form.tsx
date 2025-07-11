@@ -68,11 +68,11 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     }
 
     const result = await register(formData)
-
+    console.log("r.result",result)
     if (result.success) {
       setShowToast({
         show: true,
-        message: "注册成功！",
+        message: "注册成功！前往邮箱验证后即可登录",
         variant: "success",
       })
       setTimeout(() => {

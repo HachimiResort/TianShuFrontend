@@ -66,7 +66,7 @@ export default function Profile() {
       };
       const response: ApiResponse<UserInfoResponse> = await apiService.put('/auth/updateProfile', body);
       if (response.success && response.data) {
-        console.log("用户信息更新成功:", response.data);
+        //console.log("用户信息更新成功:", response.data);
         // 更新本地状态
         setFormData({
           ...formData,

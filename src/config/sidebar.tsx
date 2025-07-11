@@ -8,7 +8,8 @@ export interface SidebarItem {
   badge?: string
 }
 
-export const sidebarConfig: SidebarItem[] = [
+//管理员导航菜单
+export const adminsidebarConfig: SidebarItem[] = [
   {
     title: "仪表盘",
     url: "/dashboard",
@@ -21,10 +22,36 @@ export const sidebarConfig: SidebarItem[] = [
   },
   {
     title: "用户管理",
-    url: "/users",
+    url: "/user",
     icon: Users,
     badge: "管理",
   },
+  {
+    title: "智慧城市",
+    url: "/smart-city",
+    icon: Building2,
+    badge: "新",
+  },
+  {
+    title: "设置",
+    url: "/settings",
+    icon: Settings,
+  },
+]
+
+//用户导航菜单
+export const usersidebarConfig: SidebarItem[] = [
+  {
+    title: "仪表盘",
+    url: "/dashboard",
+    icon: Home,
+  },
+  {
+    title: "个人信息",
+    url: "/profile",
+    icon: User,
+  },
+
   {
     title: "智慧城市",
     url: "/smart-city",
