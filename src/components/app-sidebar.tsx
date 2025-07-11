@@ -35,7 +35,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   useEffect(() => {
     const fetchUserRole = async () => {
         const response = await apiService.get('/auth/me');
-        console.log("response",response)
+        //console.log("response",response)
         if (response.success && response.data) {
           const role = response.data.message.role;
           setSidebarConfig(role === 'admin' ? adminsidebarConfig : usersidebarConfig);

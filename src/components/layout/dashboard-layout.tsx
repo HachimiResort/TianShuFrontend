@@ -42,7 +42,7 @@ export function DashboardLayout() {
     if (loading) return null; // 或显示加载状态
 
     const currentItem = sidebarConfig.find(item => item.url.split("/").pop() === currentPath);
-    console.log("currentItem",currentItem)
+    //console.log("currentItem",currentItem)
     return (
         <>
           <BreadcrumbItem className="hidden md:block">
