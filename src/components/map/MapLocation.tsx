@@ -70,7 +70,7 @@ export function MapLocation() {
         } catch (err) {
             setError('Failed to fetch locations');
             console.error(err);
-            console.log(error);
+            console.log(error)
         }
         };
         fetchLocations();

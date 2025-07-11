@@ -31,8 +31,8 @@ export interface UserInfoResponse {
 }
 
 export interface GetMeResponse {
-    code: string
-    message: {
-      role: string
-    }
+  code: number
+  message: {
+    role:string
+  }
 }

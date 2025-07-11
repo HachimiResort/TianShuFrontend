@@ -23,7 +23,8 @@ import { Button } from "@/components/ui/button"
 import { useUserInfo } from "@/hooks/use-auth"
 import {apiService} from "@/services/api.ts";
 import {useEffect, useState} from "react";
-import { type GetMeResponse } from "@/types"
+import type { GetMeResponse } from "@/types/index"
+
 
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

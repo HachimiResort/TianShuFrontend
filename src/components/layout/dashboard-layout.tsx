@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { usersidebarConfig,adminsidebarConfig } from "@/config/sidebar";
 import { useEffect, useState } from 'react';
 import {apiService} from "@/services/api.ts";
-import { type GetMeResponse } from "@/types"
+import { type GetMeResponse } from "@/types/index"
 
 export function DashboardLayout() {
   const [sidebarConfig, setSidebarConfig] = useState(usersidebarConfig);

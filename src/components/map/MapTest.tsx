@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { Upload, Download, Trash2, FileText, X } from "lucide-react"
+import 'maplibre-gl/dist/maplibre-gl.css';
 
 // 类型定义
 interface CoordinatePoint {
