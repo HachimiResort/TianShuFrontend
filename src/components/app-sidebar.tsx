@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button"
 import { useUserInfo } from "@/hooks/use-auth"
 import {apiService} from "@/services/api.ts";
 import {useEffect, useState} from "react";
-
+import { type GetMeResponse } from "@/types"
 
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -34,7 +34,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   useEffect(() => {
     const fetchUserRole = async () => {
-        const response = await apiService.get('/auth/me');
+        const response = await apiService.get<GetMeResponse>('/auth/me');
         console.log("response",response)
         if (response.success && response.data) {
           const role = response.data.message.role;
