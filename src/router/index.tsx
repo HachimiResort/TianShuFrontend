@@ -65,8 +65,8 @@ export const AppRouter = () => {
     const allRoutes = flattenRoutes(routes);
 
 
-    console.log("allRoutes:", allRoutes);
-    console.log("location.pathname:", location.pathname);
+    //console.log("allRoutes:", allRoutes);
+    //console.log("location.pathname:", location.pathname);
 
     // 查找匹配的路由
     const currentRoute = allRoutes.find(
@@ -74,15 +74,16 @@ export const AppRouter = () => {
     );
 
 
-    console.log("currentRoute:", currentRoute);
-    console.log("currentRoute?.meta?.requiresAuth",currentRoute?.meta?.requiresAuth);
+    //console.log("currentRoute:", currentRoute);
+    //console.log("currentRoute?.meta?.requiresAuth",currentRoute?.meta?.requiresAuth);
 
     // 路由守卫逻辑
     if (currentRoute?.meta?.requiresAuth && !isAuthenticated()) {
-      console.log("[路由守卫] 未认证，重定向到登录页");
+      //console.log("[路由守卫] 未认证，重定向到登录页");
       navigate("/login", { replace: true });
+
     } else {
-      console.log("[路由守卫] 允许访问:", location.pathname);
+      //console.log("[路由守卫] 允许访问:", location.pathname);
     }
   }, [location, navigate]);
 

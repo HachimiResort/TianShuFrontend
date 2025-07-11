@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
-// import { Toast } from "@/components/ui/toast"
 import { User, Mail, Lock, UserPlus } from "lucide-react"
+import {toast} from "@/components/ui/use-toast.tsx";
 
 interface RegisterFormProps {
   onSwitchToLogin: () => void
@@ -24,11 +24,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     confirmPassword: "",
     region: "+86"
   })
-  const [showToast, setShowToast] = useState<{
-    show: boolean
-    message: string
-    variant: "default" | "destructive" | "success"
-  }>({ show: false, message: "", variant: "default" })
 
   const { register, loading } = useAuth()
 
@@ -58,35 +53,31 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 
     const validationError = validateForm()
     if (validationError) {
-      setShowToast({
-        show: true,
-        message: validationError,
+      toast({
+        description: validationError,
         variant: "destructive",
+        duration: 2000,
       })
-      setTimeout(() => setShowToast((prev) => ({ ...prev, show: false })), 3000)
       return
     }
 
     const result = await register(formData)
-    console.log("r.result",result)
     if (result.success) {
-      setShowToast({
-        show: true,
-        message: "注册成功！前往邮箱验证后即可登录",
+      toast({
+        description: "注册成功！请前往邮箱验证后即可登录",
         variant: "success",
+        duration: 3000,
       })
       setTimeout(() => {
         onSwitchToLogin()
       }, 1000)
     } else {
-      setShowToast({
-        show: true,
-        message: result.error || "注册失败",
+      toast({
+        description: "注册失败！",
         variant: "destructive",
+        duration: 2000,
       })
     }
-
-    setTimeout(() => setShowToast((prev) => ({ ...prev, show: false })), 3000)
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,7 +112,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                 value={formData.username}
                 onChange={handleInputChange}
                 className="pl-10"
-                required
               />
             </div>
           </div>
@@ -138,7 +128,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                 value={formData.email}
                 onChange={handleInputChange}
                 className="pl-10"
-                required
               />
             </div>
           </div>
@@ -155,7 +144,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                 value={formData.password}
                 onChange={handleInputChange}
                 className="pl-10"
-                required
               />
             </div>
           </div>
@@ -172,7 +160,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 className="pl-10"
-                required
               />
             </div>
           </div>
@@ -191,7 +178,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           </p>
         </div>
       </Card>
-      {showToast.show}
     </>
   )
 }
