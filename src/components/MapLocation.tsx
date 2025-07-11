@@ -30,15 +30,15 @@ function processAdjacencyMatrix(matrix: string[], locations: Location[]): LineDa
                 const location2 = locationMap.get(locations[j].index);
                 if (location1 && location2) {
                     // 避免重复连线（只保留 i < j 的线）
-                    if (i < j) {
-                        lineDataArray.push({
-                            id: `line_${location1.index}_${location2.index}`,
-                            coordinates: [
-                                [parseFloat(location1.longitude), parseFloat(location1.latitude)],
-                                [parseFloat(location2.longitude), parseFloat(location2.latitude)]
-                            ]
-                        });
-                    }
+
+                    lineDataArray.push({
+                        id: `line_${location1.index}_${location2.index}`,
+                        coordinates: [
+                            [parseFloat(location1.longitude), parseFloat(location1.latitude)],
+                            [parseFloat(location2.longitude), parseFloat(location2.latitude)]
+                        ]
+                    });
+
                 }
             }
         }
