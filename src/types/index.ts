@@ -29,3 +29,4 @@ export interface UserInfoResponse {
     is_admin: boolean;
   };
 }
+
