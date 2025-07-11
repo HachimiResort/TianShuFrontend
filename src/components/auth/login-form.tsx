@@ -10,12 +10,15 @@ import { Card } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
 // import { Toast } from "@/components/ui/toast"
 import { User, Lock } from "lucide-react"
+import { useNavigate } from "react-router-dom";
 
 interface LoginFormProps {
+
   onSwitchToRegister: () => void
 }
 
 export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
+
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -27,6 +30,7 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   }>({ show: false, message: "", variant: "default" })
 
   const { login, loading } = useAuth()
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,6 +53,8 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         message: "登录成功！",
         variant: "success",
       })
+//登陆成功页面跳转
+      navigate("/dashboard");
     } else {
       setShowToast({
         show: true,
