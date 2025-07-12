@@ -21,6 +21,9 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     password: "",
   })
 
+
+
+
   const { login, loading } = useAuth()
   const navigate = useNavigate()
 

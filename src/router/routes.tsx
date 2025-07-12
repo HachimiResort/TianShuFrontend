@@ -65,6 +65,14 @@ export const routes: RouteConfig[] = [
           requiresAuth: true,
         },
       },
+      {
+        path: "management",
+        element: <Manager/>,
+        meta: {
+          title: "用户管理",
+          requiresAuth: true,
+        },
+      },
     ],
   },
   {
@@ -92,20 +100,7 @@ export const routes: RouteConfig[] = [
       title: "测试地图",
     },
   },
-  {
-    path: "/",
-    element: <AuthLayout />,
-    children: [
-      {
-        path: "management",
-        element: <Manager/>,
-        meta: {
-          title: "用户管理",
-          requiresAuth: true,
-        },
-      },
-    ],
-  },
+
   {
     path: "*",
     element: (
