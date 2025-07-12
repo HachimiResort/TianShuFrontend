@@ -26,7 +26,7 @@ export function DashboardLayout() {
       try {
         const response = await apiService.get<GetMeResponse>('/auth/me');
         if (response.success && response.data) {
-          const role = response.data.message.role;
+          const role = response.data.message.role
           setSidebarConfig(role === 'admin' ? adminsidebarConfig : usersidebarConfig);
         }
       } catch (err) {
