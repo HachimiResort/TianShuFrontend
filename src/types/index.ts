@@ -30,11 +30,16 @@ export interface ApiResponse<T = any> {
 export interface UserInfoResponse {
   code: number;
   message: {
-    username: string;
-    email: string;
-    phonenumber: string;
-    userid: number;
-    is_admin: boolean;
+    user: {
+      username: string;
+      email: string;
+      phonenumber: string;
+      userid: number;
+      is_admin: boolean;
+      is_verified: boolean;
+      last_login_ip: string;
+      last_login_time: number;
+    };
   };
 }
 
