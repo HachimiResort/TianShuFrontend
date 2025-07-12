@@ -4,6 +4,14 @@
 // --Response请求体的格式--------
 // --Request是返回response的格式-
 
+export interface LineData {
+  index?: string
+  startPoint: [number,number]
+  endPoint: [number,number]
+  startColor: string,
+  endColor: string
+}
+
 export interface User {
   id: string
   username: string
