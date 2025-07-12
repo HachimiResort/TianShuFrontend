@@ -41,7 +41,9 @@ interface UserData {
 
 interface UsersApiResponse {
   code: number
-  message: UserData[]
+  message: {
+    users: UserData[];
+  };
 }
 
 interface EditUserData {
@@ -80,6 +82,7 @@ export default function UsersPage() {
   // 显示提示消息
   const showToast = useCallback(
     (message: string, variant: "default" | "destructive" | "success" = "default") => {
+      console.log("Showing toast:", message, variant);
       toast({
         title: variant === "destructive" ? "错误" : variant === "success" ? "成功" : "提示",
         description: message,
@@ -93,11 +96,13 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     try {
-      const response = await apiService.get<UsersApiResponse>("/auth/user")
+      const response = await apiService.get<UsersApiResponse>("/auth/users")
+
 
       if (response.success && response.data) {
+        showToast("获取用户数据成功", "success")
         if (response.data.code === 0) {
-          const userData = response.data.message
+          const userData = response.data.message.users
           setUsers(userData)
           setTotalPages(Math.ceil(userData.length / ITEMS_PER_PAGE))
         } else {
@@ -116,9 +121,10 @@ export default function UsersPage() {
   // 更新用户信息
   const updateUser = useCallback(
     async (userId: number, userData: EditUserData) => {
+      console.log("userData",userData)
       try {
-        const response = await apiService.put(`/user/${userId}`, userData)
-
+        const response = await apiService.put(`/auth/users/${userId}/updateProfile`, userData)
+        console.log("用户信息更新",response)
         if (response.success) {
           showToast("用户信息更新成功", "success")
           await fetchUsers() // 重新获取用户列表
@@ -139,7 +145,7 @@ export default function UsersPage() {
   const deleteUser = useCallback(
     async (userId: number) => {
       try {
-        const response = await apiService.delete(`/user/${userId}`, { method: "DELETE" })
+        const response = await apiService.delete(`/auth/users/${userId}`)
 
         if (response.success) {
           showToast("用户删除成功", "success")

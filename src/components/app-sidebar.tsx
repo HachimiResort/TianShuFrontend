@@ -36,7 +36,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   useEffect(() => {
     const fetchUserRole = async () => {
         const response = await apiService.get<GetMeResponse>('/auth/me');
-        console.log("response",response)
         if (response.success && response.data) {
           const role = response.data.message.role;
           setSidebarConfig(role === 'admin' ? adminsidebarConfig : usersidebarConfig);
@@ -101,8 +100,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <span className="truncate font-semibold text-red-500">获取信息失败</span>
                   ) : userInfo ? (
                       <>
-                        <span className="truncate font-semibold">{userInfo.message.username}</span>
-                        <span className="truncate text-xs text-muted-foreground">{userInfo.message.email}</span>
+                        <span className="truncate font-semibold">{userInfo.message.user.username}</span>
+                        <span className="truncate text-xs text-muted-foreground">{userInfo.message.user.email}</span>
                       </>
                   ) : (
                       <span className="truncate font-semibold">未获取到用户信息</span>

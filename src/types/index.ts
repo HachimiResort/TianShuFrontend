@@ -4,6 +4,7 @@
 // --Response请求体的格式--------
 // --Request是返回response的格式-
 
+
 export interface User {
   id: string
   username: string
@@ -22,11 +23,16 @@ export interface ApiResponse<T = any> {
 export interface UserInfoResponse {
   code: number;
   message: {
-    username: string;
-    email: string;
-    phonenumber: string;
-    userid: number;
-    is_admin: boolean;
+    user: {
+      username: string;
+      email: string;
+      phonenumber: string;
+      userid: number;
+      is_admin: boolean;
+      is_verified: boolean;
+      last_login_ip: string;
+      last_login_time: number;
+    };
   };
 }
 

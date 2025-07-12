@@ -117,7 +117,9 @@ export function useUserInfo(userid: string) {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const response: ApiResponse<UserInfoResponse> = await apiService.get<UserInfoResponse>(`/auth/user/${userid}`);
+
+        const response: ApiResponse<UserInfoResponse> = await apiService.get<UserInfoResponse>(`/auth/users/${userid}`);
+
         if (response.success && response.data) {
           setUserInfo(response.data);
         } else {
