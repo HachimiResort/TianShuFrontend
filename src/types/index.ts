@@ -4,7 +4,6 @@
 // --Response请求体的格式--------
 // --Request是返回response的格式-
 
-import * as timers from "timers";
 
 export interface User {
   id: string
