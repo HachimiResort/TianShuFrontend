@@ -22,7 +22,7 @@ export const adminsidebarConfig: SidebarItem[] = [
   },
   {
     title: "用户管理",
-    url: "/user",
+    url: "/management",
     icon: Users,
     badge: "管理",
   },

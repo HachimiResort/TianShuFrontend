@@ -93,7 +93,13 @@ class ApiService {
     })
   }
 
-
+  public delete<T>(endpoint: string, body: unknown, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: "DELETE",
+      body: JSON.stringify(body),
+    })
+  }
 }
 
 // 导出一个单例，在整个应用中共享使用

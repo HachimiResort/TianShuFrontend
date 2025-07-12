@@ -12,7 +12,8 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { usersidebarConfig,adminsidebarConfig } from "@/config/sidebar";
 import { useEffect, useState } from 'react';
-import {apiService} from "@/services/api.ts";
+import { apiService } from "@/services/api.ts";
+// import type { GetMeResponse } from "@/types/index"
 
 export function DashboardLayout() {
   const [sidebarConfig, setSidebarConfig] = useState(usersidebarConfig);
@@ -25,7 +26,7 @@ export function DashboardLayout() {
       try {
         const response = await apiService.get('/auth/me');
         if (response.success && response.data) {
-          const role = response.data.message.role;
+          const role = response.data.message.role
           setSidebarConfig(role === 'admin' ? adminsidebarConfig : usersidebarConfig);
         }
       } catch (err) {

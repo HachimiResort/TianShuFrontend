@@ -11,6 +11,7 @@ const Dashboard = lazy(() => import("@/pages/DashBoard"))
 const Profile = lazy(() => import("@/pages/profile"))
 const NotFound = lazy(() => import("@/pages/not-found"))
 const LocationPage = lazy(() => import("@/pages/Location"))
+const Manager = lazy(()=> import("@/pages/Manager"))
 
 // 加载状态组件
 const PageLoading = () => <div className="flex h-screen items-center justify-center">加载中...</div>
@@ -90,6 +91,20 @@ export const routes: RouteConfig[] = [
     meta: {
       title: "测试地图",
     },
+  },
+  {
+    path: "/",
+    element: <AuthLayout />,
+    children: [
+      {
+        path: "management",
+        element: <Manager/>,
+        meta: {
+          title: "用户管理",
+          requiresAuth: true,
+        },
+      },
+    ],
   },
   {
     path: "*",

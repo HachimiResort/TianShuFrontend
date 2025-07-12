@@ -4,7 +4,6 @@ import { ThemeProvider } from "@/components/theme-context"
 import { MapExample } from "@/components/map/MapExample"
 import "./index.css"
 
-
 function App() {
   return (
     <BrowserRouter>
