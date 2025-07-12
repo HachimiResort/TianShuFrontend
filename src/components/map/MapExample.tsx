@@ -1,88 +1,93 @@
-import { useState } from 'react';
-import Map, { type MapProps, Source, Layer, NavigationControl, GeolocateControl, Marker, Popup } from 'react-map-gl/maplibre';
+import React, { useState, useEffect, useRef } from 'react';
+import Map, { Source, Layer } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
-// 定义线段数据的类型
-interface LineData {
-  id: string;
-  coordinates: [number, number][]; // 线段的经纬度坐标数组
-}
-
-// 模拟线段数据
-const lines: LineData[] = [
-  {
-    id: 'line1',
-    coordinates: [
-      [116.34157, 39.95116], // 起点
-      [116.345, 39.955],     // 终点
-    ],
-  },
-  {
-    id: 'line2',
-    coordinates: [
-      [116.34, 39.95],
-      [116.346, 39.948],
-    ],
-  },
-];
-
-// 定义组件
 export function MapExample() {
-  const [showProp, setShowProp] = useState(false);
+  const [gradientOffset, setGradientOffset] = useState(0);
+  const mapRef = useRef<any>(null);
+  
+  const lineCoordinates = [
+    [116.34157, 39.95116],
+    [116.45157, 39.96116]
+  ];
 
-  const mapProps: MapProps = {
-    initialViewState: {
-      longitude: 116.34157,
-      latitude: 39.95116,
-      zoom: 15,
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGradientOffset(prev => (prev + 0.02) % 1);
+    }, 50); // 每50ms更新一次
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const geojsonData:Feature = {
+    type: 'Feature',
+    geometry: {
+      type: 'LineString',
+      coordinates: lineCoordinates
     },
-    style: { width: '100%', height: '100%' },
-    mapStyle: 'https://api.maptiler.com/maps/streets/style.json?key=AKUofKhmm1j1S5bzzZ0F',
+    properties: {}
+  };
+
+  // 创建动态渐变色
+  const createGradientExpression = (offset: number) => {
+    return [
+      'interpolate',
+      ['linear'],
+      ['line-progress'],
+      Math.max(0, offset - 0.3), 'rgba(231, 76, 60, 0)',
+      Math.max(0, offset - 0.2), '#e74c3c',
+      Math.max(0, offset - 0.1), '#f39c12',
+      offset, '#2ecc71',
+      Math.min(1, offset + 0.1), '#3498db',
+      Math.min(1, offset + 0.2), '#9b59b6',
+      Math.min(1, offset + 0.3), 'rgba(155, 89, 182, 0)'
+    ];
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
-      <Map {...mapProps}>
-        <NavigationControl position="top-right" />
-        <GeolocateControl position="top-right" />
-        <Marker longitude={116.34157} latitude={39.95116} onClick={() => setShowProp(true)}>
-          <div style={{ color: 'red', fontSize: '50px' }}>😼</div>
-        </Marker>
-        {showProp && (
-          <Popup
-            longitude={116.34157}
-            latitude={39.95116}
-            closeOnClick={false}
-            onClose={() => setShowProp(false)}
-          >
-            <div>Hello BeiJing</div>
-          </Popup>
-        )}
-
-        {/* 批量渲染线段 */}
-        {lines.map((line) => (
-          <Source
-            key={line.id}
-            id={line.id}
-            type="geojson"
-            data={{
-              type: 'Feature',
-              geometry: {
-                type: 'LineString',
-                coordinates: line.coordinates,
-              },
-              properties: {},
+    <div style={{ height: '100vh', width: '100vw' }}>
+      <Map
+        ref={mapRef}
+        initialViewState={{
+          longitude: 116.39657,
+          latitude: 39.95616,
+          zoom: 13
+        }}
+        style={{ width: '100%', height: '100%' }}
+        mapStyle="https://api.maptiler.com/maps/streets/style.json?key=AKUofKhmm1j1S5bzzZ0F"
+      >
+        <Source id="line-source" type="geojson" data={geojsonData} lineMetrics={true}>
+          {/* 发光效果背景层 */}
+          <Layer
+            id="line-glow"
+            type="line"
+            paint={{
+              'line-color': '#e74c3c',
+              'line-width': 15,
+              'line-opacity': 0.3,
+              'line-blur': 10
             }}
-          >
-            <Layer
-              id={line.id}
-              type="line"
-              paint={{
-                'line-color': '#ff0000', // 线段颜色
-                'line-width': 6,         // 线段宽度
-              }}
-            />
-          </Source>
-        ))}
+            layout={{
+              'line-cap': 'round',
+              'line-join': 'round'
+            }}
+          />
+          {/* 主渐变线条 */}
+          <Layer
+            id="line-gradient"
+            type="line"
+            paint={{
+              'line-color': 'red', // 这会被 line-gradient 覆盖
+              'line-gradient': createGradientExpression(gradientOffset) as any,
+              'line-width': 6,
+              'line-opacity': 1
+            }}
+            layout={{
+              'line-cap': 'round',
+              'line-join': 'round'
+            }}
+          />
+        </Source>
       </Map>
     </div>
   );

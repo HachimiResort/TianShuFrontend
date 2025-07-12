@@ -117,7 +117,7 @@ export default function UsersPage() {
   const updateUser = useCallback(
     async (userId: number, userData: EditUserData) => {
       try {
-        const response = await apiService.put(`/user/${userId}`, userData)
+        const response = await apiService.put(`/auth/updateProfile`, userData)
 
         if (response.success) {
           showToast("用户信息更新成功", "success")
