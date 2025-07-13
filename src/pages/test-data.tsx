@@ -139,11 +139,21 @@ class DataCache {
   }
 
   setMeasurement(sceneId: number, startTime: number, step: number, data: TrafficData): void {
-    this.measurementCache.set(this.getCacheKey(sceneId, startTime, step), data)
+    const baseKey = this.getCacheKey(sceneId, startTime, step)
+    this.measurementCache.set(baseKey, data)
+    // 为每个时间步都标记有数据
+    for (let i = 0; i < step; i++) {
+      this.updateTimeStepStatus(Math.floor((startTime - data.start_time) / step) + i, false)
+    }
   }
 
   setPrediction(sceneId: number, startTime: number, step: number, data: TrafficData): void {
-    this.predictionCache.set(this.getCacheKey(sceneId, startTime, step), data)
+    const baseKey = this.getCacheKey(sceneId, startTime, step)
+    this.predictionCache.set(baseKey, data)
+    // 为每个时间步都标记有预测数据
+    for (let i = 0; i < step; i++) {
+      this.updateTimeStepStatus(Math.floor((startTime - data.start_time) / step) + i, true)
+    }
   }
 
   getMeasurement(sceneId: number, startTime: number, step: number): TrafficData | undefined {
@@ -168,6 +178,9 @@ class DataCache {
 export default function TestDataPage() {
   const { toast } = useToast()
   const dataCache = useRef(new DataCache())
+  // 拖拽相关状态和ref
+  const [isDragging, setIsDragging] = useState(false)
+  const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // 基础状态
   const [scenes, setScenes] = useState<Scene[]>([])
@@ -310,7 +323,7 @@ export default function TestDataPage() {
 
   // 获取预测数据
   const fetchPredictionData = useCallback(
-    async (sceneId: number, startTime: number, step = 12) => {
+    async (sceneId: number, startTime: number, step = 30) => { // 改为30步
       // 检查缓存
       if (dataCache.current.hasPrediction(sceneId, startTime, step)) {
         return dataCache.current.getPrediction(sceneId, startTime, step)!
@@ -323,6 +336,11 @@ export default function TestDataPage() {
 
         if (response.success && response.data?.code === 0) {
           const data = response.data.message
+          // 检查是否返回空数组
+          if (!data.measurements || data.measurements.length === 0) {
+            showToast("该时间段暂无预测数据", "default")
+            return null
+          }
           dataCache.current.setPrediction(sceneId, startTime, step, data)
           return data
         } else {
@@ -419,18 +437,39 @@ export default function TestDataPage() {
 
     try {
       const targetTime = selectedScene.measurement_start_time + currentTimeStep * selectedScene.step_length
-      const data = await fetchPredictionData(selectedScene.scene_id, targetTime)
+      const data = await fetchPredictionData(selectedScene.scene_id, targetTime, 30)
 
+      // 无论是否有数据，都更新状态和显示
+      for (let i = 0; i < 30 && currentTimeStep + i < totalTimeSteps; i++) {
+        dataCache.current.updateTimeStepStatus(currentTimeStep + i, true)
+      }
+      setTimeStepStatuses(new Map(dataCache.current.getAllTimeStepStatuses()))
+      
       if (data) {
-        dataCache.current.updateTimeStepStatus(currentTimeStep, true)
-        setTimeStepStatuses(new Map(dataCache.current.getAllTimeStepStatuses()))
         setCurrentPredictionData(data)
         showToast("预测数据加载成功", "success")
+      } else {
+        // 设置一个空的预测数据结构来显示"无数据"状态
+        setCurrentPredictionData({
+          info: "无预测数据",
+          start_time: targetTime,
+          step: selectedScene.step_length,
+          measurements: []
+        })
+        showToast("该时间段暂无预测数据", "default")
       }
+    } catch (error) {
+      setCurrentPredictionData({
+        info: "预测请求失败",
+        start_time: selectedScene.measurement_start_time + currentTimeStep * selectedScene.step_length,
+        step: selectedScene.step_length,
+        measurements: []
+      })
+      showToast("预测数据请求失败", "destructive")
     } finally {
       setLoadingStates((prev) => ({ ...prev, predictions: false }))
     }
-  }, [selectedScene, currentTimeStep, fetchPredictionData, showToast])
+  }, [selectedScene, currentTimeStep, fetchPredictionData, showToast, totalTimeSteps])
 
   // 选择场景
   const handleSceneSelect = useCallback(
@@ -484,29 +523,57 @@ export default function TestDataPage() {
       if (newTimeStep === currentTimeStep || !selectedScene) return
 
       setCurrentTimeStep(newTimeStep)
+      setIsDragging(true)
 
-      // Abort the previous loading process and create a new controller for the new one
-      loadingControllerRef.current.abort = true
-      const newController = { abort: false }
-      loadingControllerRef.current = newController
+      // 清除之前的定时器
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current)
+      }
 
-      const CHUNK_SIZE = 12
-      // Find the start of the chunk that this time step belongs to
-      const chunkStartStep = Math.floor(newTimeStep / CHUNK_SIZE) * CHUNK_SIZE
-      const chunkStartTime = selectedScene.measurement_start_time + chunkStartStep * selectedScene.step_length
-
-      // Immediately try to update view from cache using the correct chunk key
-      const cachedMeasurement = dataCache.current.getMeasurement(selectedScene.scene_id, chunkStartTime, CHUNK_SIZE)
-      setCurrentMeasurementData(cachedMeasurement || null)
-      
+      // 立即从缓存更新视图
       const targetTime = selectedScene.measurement_start_time + newTimeStep * selectedScene.step_length
-      const cachedPrediction = dataCache.current.getPrediction(selectedScene.scene_id, targetTime, 12)
+      // 尝试从缓存获取单个时间步的数据
+      const cachedMeasurement = dataCache.current.getMeasurement(selectedScene.scene_id, targetTime, 1)
+      if (cachedMeasurement) {
+        setCurrentMeasurementData(cachedMeasurement)
+      } else {
+        // 如果单个时间步没有缓存，尝试从批量数据中获取
+        const CHUNK_SIZE = 12
+        const chunkStartStep = Math.floor(newTimeStep / CHUNK_SIZE) * CHUNK_SIZE
+        const chunkStartTime = selectedScene.measurement_start_time + chunkStartStep * selectedScene.step_length
+        const cachedChunk = dataCache.current.getMeasurement(selectedScene.scene_id, chunkStartTime, CHUNK_SIZE)
+        if (cachedChunk) {
+          // 从批量数据中提取当前时间步的数据
+          const currentStepData: TrafficData = {
+            ...cachedChunk,
+            start_time: targetTime,
+            measurements: cachedChunk.measurements.map(measurement => ({
+              ...measurement,
+              flow_data: measurement.flow_data.filter(record => 
+                Math.abs(record.time - targetTime) <= selectedScene.step_length / 2
+              )
+            }))
+          }
+          setCurrentMeasurementData(currentStepData)
+        } else {
+          setCurrentMeasurementData(null)
+        }
+      }
+
+      const cachedPrediction = dataCache.current.getPrediction(selectedScene.scene_id, targetTime, 1)
       setCurrentPredictionData(cachedPrediction || null)
 
-      // Start the streaming load from the new cursor position.
-      manageStreamingBuffer(newTimeStep, newController)
+      // 设置延迟请求
+      dragTimeoutRef.current = setTimeout(() => {
+        setIsDragging(false)
+        // 只有在鼠标松开后才开始新的加载流程
+        loadingControllerRef.current.abort = true
+        const newController = { abort: false }
+        loadingControllerRef.current = newController
+        manageStreamingBuffer(newTimeStep, newController)
+      }, 300) // 300ms 延迟
     },
-    [selectedScene, locations.length, currentTimeStep, manageStreamingBuffer],
+    [selectedScene, currentTimeStep, manageStreamingBuffer],
   )
 
   // 播放控制
@@ -586,7 +653,9 @@ export default function TestDataPage() {
       if (playIntervalRef.current) {
         clearInterval(playIntervalRef.current)
       }
-
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -680,6 +749,20 @@ export default function TestDataPage() {
                   max={totalTimeSteps - 1}
                   step={1}
                   className="absolute inset-0 [&>span:first-child]:bg-transparent [&>span:first-child]:border-0"
+                  onPointerDown={() => setIsDragging(true)}
+                  onPointerUp={() => {
+                    // 当鼠标松开时，清除定时器并立即执行请求
+                    if (dragTimeoutRef.current) {
+                      clearTimeout(dragTimeoutRef.current)
+                      dragTimeoutRef.current = null
+                    }
+                    setIsDragging(false)
+                    // 立即开始加载
+                    loadingControllerRef.current.abort = true
+                    const newController = { abort: false }
+                    loadingControllerRef.current = newController
+                    manageStreamingBuffer(currentTimeStep, newController)
+                  }}
                 />
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
