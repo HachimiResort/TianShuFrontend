@@ -12,6 +12,7 @@ import { apiService } from "@/services/api"
 import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import ColorLine from "@/components/map/ColorLine"
+import PredictionHeatmap from "@/components/map/PredictionHeatmap"
 
 // 复用 test-data.tsx 的数据类型定义
 interface Scene {
@@ -133,9 +134,15 @@ class DataCache {
     const key = this.getChunkCacheKey(scene.scene_id, chunkData.start_time, chunkData.step)
     this.chunkCache.set(key, chunkData)
 
+    // 只存储 chunkData.start_time ~ chunkData.start_time + (chunkData.step-1)*scene.step_length 的时间步
     chunkData.measurements.forEach((locationMeasurement) => {
       locationMeasurement.flow_data.forEach((flowRecord) => {
         const timeStep = Math.round((flowRecord.time - scene.measurement_start_time) / scene.step_length)
+        // 限定时间步范围
+        const chunkStartStep = Math.round((chunkData.start_time - scene.measurement_start_time) / scene.step_length)
+        const chunkEndStep = chunkStartStep + chunkData.step - 1
+        if (timeStep < chunkStartStep || timeStep > chunkEndStep) return // 跳过不属于本chunk的数据
+
         const currentStepData = this.timeStepDataCache.get(timeStep) || {}
         const dataMap = isPrediction ? "prediction" : "measurement"
         if (!currentStepData[dataMap]) {
@@ -332,26 +339,45 @@ export default function CityMap() {
     [showToast],
   )
 
+  // 修改 fetchAndProcessPredictionData 的数据转换逻辑
   const fetchAndProcessPredictionData = useCallback(
     async (scene: Scene, startTime: number, step = 30) => {
       if (dataCache.current.hasChunk(scene.scene_id, startTime, step)) {
         return dataCache.current.getChunk(scene.scene_id, startTime, step)!
       }
       try {
-        const response = await apiService.get<TrafficResponse>(
+        const response = await apiService.get<any>(
           `/traffic/scenes/${scene.scene_id}/locations/traffic-predictions?start_time=${startTime}&step=${step}`,
         )
         if (response.success && response.data?.code === 0) {
-          const data = response.data.message
-          if (!data.measurements || data.measurements.length === 0) {
-            showToast("该时间段暂无预测数据", "default")
-            return null
+          const rawData = response.data.message
+          // 转换预测数据为 measurements
+          const measurements: LocationMeasurement[] = []
+          for (const prediction of rawData.predictions || []) {
+            const location_id = prediction.location_id
+            const flow_data: FlowRecord[] = []
+            for (const flow of prediction.flow_data || []) {
+              flow_data.push({
+                time: rawData.start_time + (flow.current_step - 1) * rawData.step,
+                velocity_record: flow.velocity_prediction,
+                record_id: flow.current_step,
+              })
+            }
+            measurements.push({ location_id, flow_data })
           }
+          const data: TrafficData = {
+            info: rawData.info,
+            start_time: rawData.start_time,
+            step: rawData.step,
+            measurements,
+          }
+          // 只存储 A ~ A+step-1 的时间步
           dataCache.current.processAndCacheData(scene, data, true)
           return data
         }
         return null
       } catch (error) {
+        console.error('预测数据请求错误:', error)
         showToast("获取预测数据失败", "destructive")
         return null
       }
@@ -434,19 +460,50 @@ export default function CityMap() {
     try {
       const targetTime = selectedScene.measurement_start_time + currentTimeStep * selectedScene.step_length
       const data = await fetchAndProcessPredictionData(selectedScene, targetTime, 30)
-      for (let i = 0; i < 30 && currentTimeStep + i < totalTimeSteps; i++) {
-        dataCache.current.updateTimeStepStatus(currentTimeStep + i, true)
-      }
-      setTimeStepStatuses(new Map(dataCache.current.getAllTimeStepStatuses()))
-      if (data) {
-        showToast("预测数据加载成功", "success")
+      
+      if (data && data.measurements && data.measurements.length > 0) {
+        // 调试：检查第一条数据的时间步计算
+        const firstMeasurement = data.measurements[0]
+        const firstFlowData = firstMeasurement.flow_data[0]
+        if (firstFlowData) {
+          const calculatedTimeStep = Math.round((firstFlowData.time - selectedScene.measurement_start_time) / selectedScene.step_length)
+          console.log('时间步计算调试:', {
+            currentTimeStep,
+            targetTime,
+            firstFlowTime: firstFlowData.time,
+            sceneStartTime: selectedScene.measurement_start_time,
+            stepLength: selectedScene.step_length,
+            calculatedTimeStep,
+            timeDiff: firstFlowData.time - selectedScene.measurement_start_time
+          })
+        }
+        
+        // 更新时间步状态
+        for (let i = 0; i < 30 && currentTimeStep + i < totalTimeSteps; i++) {
+          dataCache.current.updateTimeStepStatus(currentTimeStep + i, true)
+        }
+        
+        // 强制触发状态更新
+        const newTimeStepStatuses = new Map(dataCache.current.getAllTimeStepStatuses())
+        setTimeStepStatuses(newTimeStepStatuses)
+        
+        // 立即获取并更新当前时间步的预测数据
         const stepData = dataCache.current.getDataForTimeStep(currentTimeStep)
+        console.log('预测数据处理完成:', {
+          currentTimeStep,
+          hasStepData: !!stepData,
+          hasPrediction: !!stepData?.prediction,
+          predictionSize: stepData?.prediction?.size || 0
+        })
+        
         setCurrentPredictionData(stepData?.prediction || null)
+        showToast("预测数据加载成功", "success")
       } else {
         setCurrentPredictionData(null)
         showToast("该时间段暂无预测数据", "default")
       }
     } catch (error) {
+      console.error('预测数据请求失败:', error)
       setCurrentPredictionData(null)
       showToast("预测数据请求失败", "destructive")
     } finally {
@@ -686,6 +743,37 @@ export default function CityMap() {
     })
   }, [lineStructures, currentColors])
 
+
+
+  // 生成预测数据的GeoJSON
+  // 在 predictionGeoJson 的 useMemo 中添加调试
+  const predictionGeoJson = useMemo(() => {
+    if (!currentPredictionData || !locations.length) return null;
+
+    const features = locations.map((location) => {
+      const data = currentPredictionData.get(location.location_id);
+      // 只保留 velocity > 0 的点
+      if (!data || data.velocity_record <= 0) return null;
+      return {
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [location.longitude, location.latitude],
+        },
+        properties: {
+          velocity: data.velocity_record,
+        },
+      };
+    }).filter(Boolean);
+
+    if (features.length === 0) return null;
+    
+    return {
+      type: "FeatureCollection",
+      features,
+    } as GeoJSON.FeatureCollection<GeoJSON.Point>;
+  }, [currentPredictionData, locations]);
+
   // 自定义Slider样式
   const getSliderStyle = useCallback(() => {
     if (!selectedScene || totalTimeSteps === 0) return {}
@@ -732,6 +820,14 @@ export default function CityMap() {
         style={{ width: "100vw", height: "100vh", position: "absolute", top: 0, left: 0 }}
         mapStyle="https://api.maptiler.com/maps/streets/style.json?key=AKUofKhmm1j1S5bzzZ0F"
       >
+        {/* 预测热力图 */}
+        { (
+          <PredictionHeatmap
+            geojson={predictionGeoJson}
+            minVelocity={getVelocityColorMapping.minVelocity}
+            maxVelocity={getVelocityColorMapping.maxVelocity}
+          />
+        )}
         {mapMarkers}
         {mapLines}
       </MapReact>
