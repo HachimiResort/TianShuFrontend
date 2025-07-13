@@ -73,7 +73,7 @@ export default memo(function ColorLine({ startPoint, endPoint, startColor, endCo
     const layerId = layerIdRef.current;
 
     // 创建多段线条来实现渐变效果
-    const segments = 20;
+    const segments = 10;
     const features = [];
     for (let i = 0; i < segments; i++) {
       const t1 = i / segments;

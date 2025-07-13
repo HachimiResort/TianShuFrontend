@@ -739,7 +739,7 @@ export default function CityMap() {
       {/* 顶部可折叠状态栏 */}
       <div className="absolute top-2 left-2 right-2 z-10 max-w-xl mx-auto">
         <Collapsible open={isTopBarOpen} onOpenChange={setIsTopBarOpen}>
-          <Card className="bg-background/95 backdrop-blur-sm border transition-all duration-300 ease-in-out text-sm p-2">
+          <Card className="bg-white/60 backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out text-sm p-2">
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-2">
                 <div className="flex items-center justify-between">
@@ -862,7 +862,7 @@ export default function CityMap() {
       {/* 底部时间控制条 */}
       {selectedScene && locations.length > 0 && (
         <div className="absolute bottom-2 left-2 right-2 z-10 max-w-xl mx-auto">
-          <Card className="bg-background/60 backdrop-blur-md border-none shadow-none transition-all duration-300 ease-in-out p-2 text-sm">
+          <Card className="bg-white/60 backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out p-2 text-sm">
             <CardContent className="p-2 space-y-2 bg-transparent">
               {/* 时间滑块 */}
               <div className="space-y-1">
