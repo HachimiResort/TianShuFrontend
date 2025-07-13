@@ -674,6 +674,8 @@ export default function CityMap() {
 
   // 生成连接线（现在只在结构变化时重新创建组件）
   const mapLines = useMemo(() => {
+    if (!currentMeasurementData || !locations.length || !graphEdges.length) return []
+    
     return lineStructures.map((line) => {
       const colors = currentColors.get(line.edgeKey) || { startColor: "#808080", endColor: "#808080" }
       
