@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -58,7 +58,7 @@ function getDistance([lng1, lat1]: [number, number], [lng2, lat2]: [number, numb
   return R * c;
 }
 
-export default function ColorLine({ startPoint, endPoint, startColor, endColor }: ColorLineProps) {
+export default memo(function ColorLine({ startPoint, endPoint, startColor, endColor }: ColorLineProps) {
   const { current: mapRef } = useMap();
   const sourceIdRef = useRef(`color-line-${Math.random().toString(36).substr(2, 9)}`);
   const layerIdRef = useRef(`color-line-layer-${Math.random().toString(36).substr(2, 9)}`);
@@ -162,10 +162,10 @@ export default function ColorLine({ startPoint, endPoint, startColor, endColor }
     if (!map || !isInitializedRef.current) return;
     const layerId = layerIdRef.current;
     if (!map.getLayer(layerId)) return;
-    const segments = 100;
+    const segments = 20;
     // 只更新颜色样式
     map.setPaintProperty(layerId, 'line-color', getGradientColorExpression(startColor, endColor, segments) as any);
   }, [mapRef, startColor, endColor]); // 只依赖颜色
 
   return null;
-}
+});

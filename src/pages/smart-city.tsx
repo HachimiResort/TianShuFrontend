@@ -558,7 +558,7 @@ export default function CityMap() {
           }
           return next
         })
-      }, 2000)
+      }, 500)
     }
   }, [isPlaying, totalTimeSteps])
 
@@ -617,9 +617,9 @@ export default function CityMap() {
     })
   }, [currentMeasurementData, locations, getVelocityColorMapping])
 
-  // 生成连接线
-  const mapLines = useMemo(() => {
-    if (!currentMeasurementData || !locations.length || !graphEdges.length) return []
+  // 生成线条基础结构（只在坐标数据变化时重新计算）
+  const lineStructures = useMemo(() => {
+    if (!locations.length || !graphEdges.length) return []
 
     const locationMap = new Map(locations.map((loc) => [loc.location_id, loc]))
 
@@ -630,24 +630,61 @@ export default function CityMap() {
 
         if (!startLocation || !endLocation) return null
 
-        const startData = currentMeasurementData.get(edge.start_vertex)
-        const endData = currentMeasurementData.get(edge.end_vertex)
+        return {
+          edgeKey: `${edge.start_vertex}-${edge.end_vertex}`,
+          startVertex: edge.start_vertex,
+          endVertex: edge.end_vertex,
+          startPoint: [startLocation.longitude, startLocation.latitude] as [number, number],
+          endPoint: [endLocation.longitude, endLocation.latitude] as [number, number],
+        }
+      })
+      .filter(Boolean) as Array<{
+        edgeKey: string
+        startVertex: number
+        endVertex: number
+        startPoint: [number, number]
+        endPoint: [number, number]
+      }>
+  }, [locations, graphEdges])
+
+  // 计算当前时间步的颜色数据
+  const currentColors = useMemo(() => {
+    const colorMap = new Map<string, { startColor: string; endColor: string }>()
+    
+    lineStructures.forEach((line) => {
+      if (currentMeasurementData) {
+        const startData = currentMeasurementData.get(line.startVertex)
+        const endData = currentMeasurementData.get(line.endVertex)
 
         const startColor = startData ? getVelocityColorMapping.getColor(startData.velocity_record) : "#808080"
         const endColor = endData ? getVelocityColorMapping.getColor(endData.velocity_record) : "#808080"
 
-        return (
-          <ColorLine
-            key={`${edge.start_vertex}-${edge.end_vertex}`}
-            startPoint={[startLocation.longitude, startLocation.latitude]}
-            endPoint={[endLocation.longitude, endLocation.latitude]}
-            startColor={startColor}
-            endColor={endColor}
-          />
-        )
-      })
-      .filter(Boolean)
-  }, [currentMeasurementData, locations, graphEdges, getVelocityColorMapping])
+        colorMap.set(line.edgeKey, { startColor, endColor })
+      } else {
+        // 没有数据时使用默认颜色
+        colorMap.set(line.edgeKey, { startColor: "#808080", endColor: "#808080" })
+      }
+    })
+
+    return colorMap
+  }, [currentMeasurementData, lineStructures, getVelocityColorMapping])
+
+  // 生成连接线（现在只在结构变化时重新创建组件）
+  const mapLines = useMemo(() => {
+    return lineStructures.map((line) => {
+      const colors = currentColors.get(line.edgeKey) || { startColor: "#808080", endColor: "#808080" }
+      
+      return (
+        <ColorLine
+          key={line.edgeKey}
+          startPoint={line.startPoint}
+          endPoint={line.endPoint}
+          startColor={colors.startColor}
+          endColor={colors.endColor}
+        />
+      )
+    })
+  }, [lineStructures, currentColors])
 
   // 自定义Slider样式
   const getSliderStyle = useCallback(() => {
