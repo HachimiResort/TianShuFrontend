@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Link, useLocation } from "react-router-dom"
+import {Link, useLocation, useNavigate} from "react-router-dom"
 import { adminsidebarConfig ,usersidebarConfig} from "@/config/sidebar"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import {
@@ -30,13 +30,28 @@ import type { GetMeResponse } from "@/types/index"
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
   const userid = localStorage.getItem("userid")
+  const navigate = useNavigate();
   const { userInfo, loading, error } = useUserInfo(userid || "")
   const [sidebarConfig, setSidebarConfig] = useState(usersidebarConfig);
+
 
   useEffect(() => {
     const fetchUserRole = async () => {
         const response = await apiService.get<GetMeResponse>('/auth/me');
         if (response.success && response.data) {
+          if (response.data.message.msg === 'Token无效或已失效') {
+            localStorage.removeItem("token");
+            localStorage.removeItem("userid");
+            // 导航到登录页面
+            navigate("/login", {
+              replace: true,
+              state: { message: "登录过期！请先登录", variant: "destructive" }
+            });
+
+
+            return;
+          }
+
           const role = response.data.message.role;
           setSidebarConfig(role === 'admin' ? adminsidebarConfig : usersidebarConfig);
         }
