@@ -94,14 +94,76 @@ const TimeStepStatus = {
   BOTH_LOADED: "both_loaded" as TimeStepStatus,
 };
 
+// 定义时间步状态颜色常量，便于统一维护
+const TIME_STEP_STATUS_COLORS = {
+  [TimeStepStatus.UNLOADED]: "#e2e8f0", // slate-200
+  [TimeStepStatus.MEASUREMENT_LOADED]: "#ff5d5dff", // 蓝色浅色
+  [TimeStepStatus.PREDICTION_LOADED]: "#e7c950ff", // 黄色浅色
+  [TimeStepStatus.BOTH_LOADED]: "#3fee7cff", // 绿色浅色
+};
+
+// 单个时间步所有地点的数据
+// key: location_id, value: FlowRecord
+// 用于渲染卡片
+// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+type PerLocationData = Map<number, FlowRecord>
+
+interface TimeStepData {
+  measurement?: PerLocationData
+  prediction?: PerLocationData
+}
+
 // 数据缓存管理
 class DataCache {
-  private measurementCache = new Map<string, TrafficData>()
-  private predictionCache = new Map<string, TrafficData>()
-  private timeStepStatus = new Map<number, TimeStepStatus>() // 记录每个时间步的加载状态
+  // 缓存原始数据块，避免重复请求
+  private chunkCache = new Map<string, TrafficData>()
+  // 按时间步缓存处理后的数据
+  private timeStepDataCache = new Map<number, TimeStepData>()
+  // 进度条状态
+  private timeStepStatus = new Map<number, TimeStepStatus>()
 
-  getCacheKey(sceneId: number, startTime: number, step: number): string {
+  getChunkCacheKey(sceneId: number, startTime: number, step: number): string {
     return `${sceneId}-${startTime}-${step}`
+  }
+
+  hasChunk(sceneId: number, startTime: number, step: number): boolean {
+    return this.chunkCache.has(this.getChunkCacheKey(sceneId, startTime, step))
+  }
+
+  getChunk(sceneId: number, startTime: number, step: number): TrafficData | undefined {
+    return this.chunkCache.get(this.getChunkCacheKey(sceneId, startTime, step))
+  }
+
+  // 处理数据块并拆分到每个时间步
+  processAndCacheData(
+    scene: Scene,
+    chunkData: TrafficData,
+    isPrediction: boolean,
+  ): void {
+    const key = this.getChunkCacheKey(scene.scene_id, chunkData.start_time, chunkData.step)
+    this.chunkCache.set(key, chunkData)
+
+    chunkData.measurements.forEach((locationMeasurement) => {
+      locationMeasurement.flow_data.forEach((flowRecord) => {
+        // 计算该数据点属于哪个时间步
+        const timeStep = Math.round(
+          (flowRecord.time - scene.measurement_start_time) / scene.step_length
+        );
+        const currentStepData = this.timeStepDataCache.get(timeStep) || {}
+        const dataMap = isPrediction ? "prediction" : "measurement"
+        if (!currentStepData[dataMap]) {
+          currentStepData[dataMap] = new Map<number, FlowRecord>()
+        }
+        currentStepData[dataMap]!.set(locationMeasurement.location_id, flowRecord)
+        this.timeStepDataCache.set(timeStep, currentStepData)
+        this.updateTimeStepStatus(timeStep, isPrediction)
+      })
+    })
+  }
+
+  getDataForTimeStep(timeStep: number): TimeStepData | undefined {
+    return this.timeStepDataCache.get(timeStep)
   }
 
   getTimeStepStatus(timeStep: number): TimeStepStatus {
@@ -112,56 +174,25 @@ class DataCache {
     this.timeStepStatus.set(timeStep, status)
   }
 
-  updateTimeStepStatus(timeStep: number, isPredicton: boolean): void {
+  updateTimeStepStatus(timeStep: number, isPrediction: boolean): void {
     const currentStatus = this.getTimeStepStatus(timeStep)
-
-    if (isPredicton) {
+    if (isPrediction) {
       if (currentStatus === TimeStepStatus.MEASUREMENT_LOADED) {
         this.setTimeStepStatus(timeStep, TimeStepStatus.BOTH_LOADED)
+      } else if (currentStatus === TimeStepStatus.BOTH_LOADED) {
+        // do nothing
       } else {
         this.setTimeStepStatus(timeStep, TimeStepStatus.PREDICTION_LOADED)
       }
     } else {
       if (currentStatus === TimeStepStatus.PREDICTION_LOADED) {
         this.setTimeStepStatus(timeStep, TimeStepStatus.BOTH_LOADED)
+      } else if (currentStatus === TimeStepStatus.BOTH_LOADED) {
+        // do nothing
       } else {
         this.setTimeStepStatus(timeStep, TimeStepStatus.MEASUREMENT_LOADED)
       }
     }
-  }
-
-  hasMeasurement(sceneId: number, startTime: number, step: number): boolean {
-    return this.measurementCache.has(this.getCacheKey(sceneId, startTime, step))
-  }
-
-  hasPrediction(sceneId: number, startTime: number, step: number): boolean {
-    return this.predictionCache.has(this.getCacheKey(sceneId, startTime, step))
-  }
-
-  setMeasurement(sceneId: number, startTime: number, step: number, data: TrafficData): void {
-    const baseKey = this.getCacheKey(sceneId, startTime, step)
-    this.measurementCache.set(baseKey, data)
-    // 为每个时间步都标记有数据
-    for (let i = 0; i < step; i++) {
-      this.updateTimeStepStatus(Math.floor((startTime - data.start_time) / step) + i, false)
-    }
-  }
-
-  setPrediction(sceneId: number, startTime: number, step: number, data: TrafficData): void {
-    const baseKey = this.getCacheKey(sceneId, startTime, step)
-    this.predictionCache.set(baseKey, data)
-    // 为每个时间步都标记有预测数据
-    for (let i = 0; i < step; i++) {
-      this.updateTimeStepStatus(Math.floor((startTime - data.start_time) / step) + i, true)
-    }
-  }
-
-  getMeasurement(sceneId: number, startTime: number, step: number): TrafficData | undefined {
-    return this.measurementCache.get(this.getCacheKey(sceneId, startTime, step))
-  }
-
-  getPrediction(sceneId: number, startTime: number, step: number): TrafficData | undefined {
-    return this.predictionCache.get(this.getCacheKey(sceneId, startTime, step))
   }
 
   getAllTimeStepStatuses(): Map<number, TimeStepStatus> {
@@ -169,8 +200,8 @@ class DataCache {
   }
 
   clear(): void {
-    this.measurementCache.clear()
-    this.predictionCache.clear()
+    this.chunkCache.clear()
+    this.timeStepDataCache.clear()
     this.timeStepStatus.clear()
   }
 }
@@ -178,9 +209,8 @@ class DataCache {
 export default function TestDataPage() {
   const { toast } = useToast()
   const dataCache = useRef(new DataCache())
-  // 拖拽相关状态和ref
+  // 拖拽相关状态
   const [isDragging, setIsDragging] = useState(false)
-  const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // 基础状态
   const [scenes, setScenes] = useState<Scene[]>([])
@@ -195,15 +225,15 @@ export default function TestDataPage() {
   const [timeStepStatuses, setTimeStepStatuses] = useState<Map<number, TimeStepStatus>>(new Map())
 
   // 数据状态
-  const [currentMeasurementData, setCurrentMeasurementData] = useState<TrafficData | null>(null)
-  const [currentPredictionData, setCurrentPredictionData] = useState<TrafficData | null>(null)
+  // REFACTORED: State now holds processed data for the *current* step only, not the whole chunk.
+  const [currentMeasurementData, setCurrentMeasurementData] = useState<PerLocationData | null>(null)
+  const [currentPredictionData, setCurrentPredictionData] = useState<PerLocationData | null>(null)
 
   // 加载状态
   const [loadingStates, setLoadingStates] = useState({
     scenes: false,
     locations: false,
     graph: false,
-    measurements: false,
     predictions: false,
     backgroundLoading: false, // 后台加载状态
   })
@@ -291,28 +321,22 @@ export default function TestDataPage() {
     [showToast],
   )
 
-  // 获取测量数据
-  const fetchMeasurementData = useCallback(
-    async (sceneId: number, startTime: number, step = 12) => {
-      // 检查缓存
-      if (dataCache.current.hasMeasurement(sceneId, startTime, step)) {
-        return dataCache.current.getMeasurement(sceneId, startTime, step)!
+  // REFACTORED: Fetches data and immediately processes it into the granular cache.
+  const fetchAndProcessMeasurementData = useCallback(
+    async (scene: Scene, startTime: number, step = 12) => {
+      if (dataCache.current.hasChunk(scene.scene_id, startTime, step)) {
+        return dataCache.current.getChunk(scene.scene_id, startTime, step)!
       }
-
       try {
         const response = await apiService.get<TrafficResponse>(
-          `/traffic/scenes/${sceneId}/locations/traffic-measurements?start_time=${startTime}&step=${step}`,
+          `/traffic/scenes/${scene.scene_id}/locations/traffic-measurements?start_time=${startTime}&step=${step}`,
         )
-
         if (response.success && response.data?.code === 0) {
           const data = response.data.message
-          // Cache the entire chunk of data
-          dataCache.current.setMeasurement(sceneId, startTime, step, data)
+          dataCache.current.processAndCacheData(scene, data, false)
           return data
-        } else {
-          showToast("获取测量数据失败", "destructive")
-          return null
         }
+        return null
       } catch (error) {
         showToast("获取测量数据失败", "destructive")
         return null
@@ -321,32 +345,26 @@ export default function TestDataPage() {
     [showToast],
   )
 
-  // 获取预测数据
-  const fetchPredictionData = useCallback(
-    async (sceneId: number, startTime: number, step = 30) => { // 改为30步
-      // 检查缓存
-      if (dataCache.current.hasPrediction(sceneId, startTime, step)) {
-        return dataCache.current.getPrediction(sceneId, startTime, step)!
+  // REFACTORED: Fetches prediction data and processes it.
+  const fetchAndProcessPredictionData = useCallback(
+    async (scene: Scene, startTime: number, step = 30) => {
+      if (dataCache.current.hasChunk(scene.scene_id, startTime, step)) {
+        return dataCache.current.getChunk(scene.scene_id, startTime, step)!
       }
-
       try {
         const response = await apiService.get<TrafficResponse>(
-          `/traffic/scenes/${sceneId}/locations/traffic-predictions?start_time=${startTime}&step=${step}`,
+          `/traffic/scenes/${scene.scene_id}/locations/traffic-predictions?start_time=${startTime}&step=${step}`,
         )
-
         if (response.success && response.data?.code === 0) {
           const data = response.data.message
-          // 检查是否返回空数组
           if (!data.measurements || data.measurements.length === 0) {
             showToast("该时间段暂无预测数据", "default")
             return null
           }
-          dataCache.current.setPrediction(sceneId, startTime, step, data)
+          dataCache.current.processAndCacheData(scene, data, true)
           return data
-        } else {
-          showToast("获取预测数据失败", "destructive")
-          return null
         }
+        return null
       } catch (error) {
         showToast("获取预测数据失败", "destructive")
         return null
@@ -376,7 +394,7 @@ export default function TestDataPage() {
           const status = dataCache.current.getTimeStepStatus(i)
           if (status === TimeStepStatus.UNLOADED || status === TimeStepStatus.PREDICTION_LOADED) {
             const startTime = selectedScene.measurement_start_time + i * selectedScene.step_length
-            const data = await fetchMeasurementData(selectedScene.scene_id, startTime, CHUNK_SIZE)
+            const data = await fetchAndProcessMeasurementData(selectedScene, startTime, CHUNK_SIZE)
 
             if (controller.abort) return
             if (!data) break // Stop this cycle on fetch error
@@ -389,7 +407,9 @@ export default function TestDataPage() {
 
             // If the cursor is still inside this newly loaded chunk, display the data
             if (currentTimeStep >= i && currentTimeStep < i + CHUNK_SIZE) {
-               setCurrentMeasurementData(data)
+               // REFACTORED: Update the view for the current step after fetching.
+               const stepData = dataCache.current.getDataForTimeStep(currentTimeStep)
+               setCurrentMeasurementData(stepData?.measurement || null)
             }
             
             i += CHUNK_SIZE - 1 // Jump the loop counter forward
@@ -406,7 +426,7 @@ export default function TestDataPage() {
           const status = dataCache.current.getTimeStepStatus(i)
           if (status === TimeStepStatus.UNLOADED || status === TimeStepStatus.PREDICTION_LOADED) {
             const startTime = selectedScene.measurement_start_time + i * selectedScene.step_length
-            const data = await fetchMeasurementData(selectedScene.scene_id, startTime, CHUNK_SIZE)
+            const data = await fetchAndProcessMeasurementData(selectedScene, startTime, CHUNK_SIZE)
 
             if (controller.abort) return
             if (!data) break 
@@ -426,50 +446,36 @@ export default function TestDataPage() {
         }
       }
     },
-    [selectedScene, totalTimeSteps, fetchMeasurementData, currentTimeStep],
+    [selectedScene, totalTimeSteps, fetchAndProcessMeasurementData, currentTimeStep],
   )
 
-  // 手动请求预测数据
+  // handleRequestPrediction 逻辑调整
   const handleRequestPrediction = useCallback(async () => {
     if (!selectedScene) return
-
     setLoadingStates((prev) => ({ ...prev, predictions: true }))
-
     try {
       const targetTime = selectedScene.measurement_start_time + currentTimeStep * selectedScene.step_length
-      const data = await fetchPredictionData(selectedScene.scene_id, targetTime, 30)
-
-      // 无论是否有数据，都更新状态和显示
+      const data = await fetchAndProcessPredictionData(selectedScene, targetTime, 30)
       for (let i = 0; i < 30 && currentTimeStep + i < totalTimeSteps; i++) {
         dataCache.current.updateTimeStepStatus(currentTimeStep + i, true)
       }
       setTimeStepStatuses(new Map(dataCache.current.getAllTimeStepStatuses()))
-      
       if (data) {
-        setCurrentPredictionData(data)
         showToast("预测数据加载成功", "success")
+        // REFACTORED: Update the view for the current step after fetching.
+        const stepData = dataCache.current.getDataForTimeStep(currentTimeStep)
+        setCurrentPredictionData(stepData?.prediction || null)
       } else {
-        // 设置一个空的预测数据结构来显示"无数据"状态
-        setCurrentPredictionData({
-          info: "无预测数据",
-          start_time: targetTime,
-          step: selectedScene.step_length,
-          measurements: []
-        })
+        setCurrentPredictionData(null)
         showToast("该时间段暂无预测数据", "default")
       }
     } catch (error) {
-      setCurrentPredictionData({
-        info: "预测请求失败",
-        start_time: selectedScene.measurement_start_time + currentTimeStep * selectedScene.step_length,
-        step: selectedScene.step_length,
-        measurements: []
-      })
+      setCurrentPredictionData(null)
       showToast("预测数据请求失败", "destructive")
     } finally {
       setLoadingStates((prev) => ({ ...prev, predictions: false }))
     }
-  }, [selectedScene, currentTimeStep, fetchPredictionData, showToast, totalTimeSteps])
+  }, [selectedScene, currentTimeStep, fetchAndProcessPredictionData, showToast, totalTimeSteps])
 
   // 选择场景
   const handleSceneSelect = useCallback(
@@ -517,64 +523,19 @@ export default function TestDataPage() {
     }
   }, [selectedScene, fetchLocations, fetchGraph, manageStreamingBuffer, showToast])
 
-  // 时间步变化处理
-  const handleTimeStepChange = useCallback(
-    async (newTimeStep: number) => {
-      if (newTimeStep === currentTimeStep || !selectedScene) return
+  // handleTimeStepChange 只更新 currentTimeStep
+  const handleTimeStepChange = useCallback((newTimeStep: number) => {
+    if (newTimeStep === currentTimeStep || !selectedScene) return;
+    setCurrentTimeStep(newTimeStep);
+  }, [selectedScene, currentTimeStep]);
 
-      setCurrentTimeStep(newTimeStep)
-      setIsDragging(true)
-
-      // 清除之前的定时器
-      if (dragTimeoutRef.current) {
-        clearTimeout(dragTimeoutRef.current)
-      }
-
-      // 立即从缓存更新视图
-      const targetTime = selectedScene.measurement_start_time + newTimeStep * selectedScene.step_length
-      // 尝试从缓存获取单个时间步的数据
-      const cachedMeasurement = dataCache.current.getMeasurement(selectedScene.scene_id, targetTime, 1)
-      if (cachedMeasurement) {
-        setCurrentMeasurementData(cachedMeasurement)
-      } else {
-        // 如果单个时间步没有缓存，尝试从批量数据中获取
-        const CHUNK_SIZE = 12
-        const chunkStartStep = Math.floor(newTimeStep / CHUNK_SIZE) * CHUNK_SIZE
-        const chunkStartTime = selectedScene.measurement_start_time + chunkStartStep * selectedScene.step_length
-        const cachedChunk = dataCache.current.getMeasurement(selectedScene.scene_id, chunkStartTime, CHUNK_SIZE)
-        if (cachedChunk) {
-          // 从批量数据中提取当前时间步的数据
-          const currentStepData: TrafficData = {
-            ...cachedChunk,
-            start_time: targetTime,
-            measurements: cachedChunk.measurements.map(measurement => ({
-              ...measurement,
-              flow_data: measurement.flow_data.filter(record => 
-                Math.abs(record.time - targetTime) <= selectedScene.step_length / 2
-              )
-            }))
-          }
-          setCurrentMeasurementData(currentStepData)
-        } else {
-          setCurrentMeasurementData(null)
-        }
-      }
-
-      const cachedPrediction = dataCache.current.getPrediction(selectedScene.scene_id, targetTime, 1)
-      setCurrentPredictionData(cachedPrediction || null)
-
-      // 设置延迟请求
-      dragTimeoutRef.current = setTimeout(() => {
-        setIsDragging(false)
-        // 只有在鼠标松开后才开始新的加载流程
-        loadingControllerRef.current.abort = true
-        const newController = { abort: false }
-        loadingControllerRef.current = newController
-        manageStreamingBuffer(newTimeStep, newController)
-      }, 300) // 300ms 延迟
-    },
-    [selectedScene, currentTimeStep, manageStreamingBuffer],
-  )
+  // 监听 currentTimeStep 变化，自动从缓存拉取数据
+  useEffect(() => {
+    if (!selectedScene) return;
+    const dataForStep = dataCache.current.getDataForTimeStep(currentTimeStep);
+    setCurrentMeasurementData(dataForStep?.measurement ?? null);
+    setCurrentPredictionData(dataForStep?.prediction ?? null);
+  }, [currentTimeStep, selectedScene, timeStepStatuses]);
 
   // 播放控制
   const handlePlayPause = useCallback(() => {
@@ -642,6 +603,16 @@ export default function TestDataPage() {
     }
   }, [selectedScene, totalTimeSteps, timeStepStatuses])
 
+  // 拖拽逻辑
+  const handleSliderPointerDown = () => setIsDragging(true);
+  const handleSliderPointerUp = () => {
+    setIsDragging(false);
+    loadingControllerRef.current.abort = true;
+    const newController = { abort: false };
+    loadingControllerRef.current = newController;
+    manageStreamingBuffer(currentTimeStep, newController);
+  };
+
   // 组件挂载时获取场景数据
   useEffect(() => {
     fetchScenes()
@@ -652,9 +623,6 @@ export default function TestDataPage() {
     return () => {
       if (playIntervalRef.current) {
         clearInterval(playIntervalRef.current)
-      }
-      if (dragTimeoutRef.current) {
-        clearTimeout(dragTimeoutRef.current)
       }
     }
   }, [])
@@ -749,20 +717,8 @@ export default function TestDataPage() {
                   max={totalTimeSteps - 1}
                   step={1}
                   className="absolute inset-0 [&>span:first-child]:bg-transparent [&>span:first-child]:border-0"
-                  onPointerDown={() => setIsDragging(true)}
-                  onPointerUp={() => {
-                    // 当鼠标松开时，清除定时器并立即执行请求
-                    if (dragTimeoutRef.current) {
-                      clearTimeout(dragTimeoutRef.current)
-                      dragTimeoutRef.current = null
-                    }
-                    setIsDragging(false)
-                    // 立即开始加载
-                    loadingControllerRef.current.abort = true
-                    const newController = { abort: false }
-                    loadingControllerRef.current = newController
-                    manageStreamingBuffer(currentTimeStep, newController)
-                  }}
+                  onPointerDown={handleSliderPointerDown}
+                  onPointerUp={handleSliderPointerUp}
                 />
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
@@ -773,19 +729,19 @@ export default function TestDataPage() {
               {/* 图例 */}
               <div className="flex flex-wrap gap-4 text-xs">
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-slate-200"></div>
+                  <div className="w-3 h-3 rounded" style={{ background: TIME_STEP_STATUS_COLORS[TimeStepStatus.UNLOADED] }}></div>
                   <span>未加载</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-blue-100"></div>
+                  <div className="w-3 h-3 rounded" style={{ background: TIME_STEP_STATUS_COLORS[TimeStepStatus.MEASUREMENT_LOADED] }}></div>
                   <span>已加载测量数据</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-amber-100"></div>
+                  <div className="w-3 h-3 rounded" style={{ background: TIME_STEP_STATUS_COLORS[TimeStepStatus.PREDICTION_LOADED] }}></div>
                   <span>已加载预测数据</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-green-100"></div>
+                  <div className="w-3 h-3 rounded" style={{ background: TIME_STEP_STATUS_COLORS[TimeStepStatus.BOTH_LOADED] }}></div>
                   <span>已加载全部数据</span>
                 </div>
               </div>
@@ -823,133 +779,91 @@ export default function TestDataPage() {
       )}
 
       {/* 数据展示区域 */}
-      {(currentMeasurementData || currentPredictionData) && (
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* 测量数据 */}
-          {currentMeasurementData && (
-            <Card className="transition-all duration-300 ease-in-out animate-in slide-in-from-left-4">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
-                  当前测量数据
-                </CardTitle>
-                <CardDescription>
-                  时间: {formatTimestamp(getCurrentTimestamp())} | 地点数: {currentMeasurementData.measurements.length}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {currentMeasurementData.measurements.map((measurement) => {
-                    // 计算当前时间步的精确时间戳
-                    let exactCurrentTime = 0;
-                    let currentTimeData = undefined;
-                    if (selectedScene) {
-                      exactCurrentTime = selectedScene.measurement_start_time + currentTimeStep * selectedScene.step_length;
-                      currentTimeData = measurement.flow_data.find(
-                        (record) => Math.abs(record.time - exactCurrentTime) <= selectedScene.step_length / 2,
-                      ) || measurement.flow_data[0];
-                    } else {
-                      currentTimeData = measurement.flow_data[0];
-                    }
-
-                    return (
-                      <div key={measurement.location_id} className="p-3 bg-muted/50 rounded-lg border">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-sm">地点 {measurement.location_id}</span>
-                          <Badge variant="outline" className="text-xs">
-                            <MapPin className="w-3 h-3 mr-1" />
-                            ID: {measurement.location_id}
-                          </Badge>
-                        </div>
-                        {currentTimeData ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">流量速度</span>
-                              <span className="font-mono text-sm font-semibold text-primary">
-                                {currentTimeData.velocity_record.toFixed(2)} km/h
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">记录时间</span>
-                              <span className="text-xs font-mono">{formatTimestamp(exactCurrentTime)}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">记录ID</span>
-                              <span className="text-xs font-mono">#{currentTimeData.record_id}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-muted-foreground text-center py-2">当前时间步无数据</div>
-                        )}
+      {/* REFACTORED: Data Display Area with cleaner conditional logic */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Measurement Data Card: Renders only if there is data for the current time step */}
+        {currentMeasurementData && currentMeasurementData.size > 0 && (
+          <Card className="transition-all duration-300 ease-in-out animate-in slide-in-from-left-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Activity className="w-5 h-5" />当前测量数据</CardTitle>
+              <CardDescription>
+                时间: {formatTimestamp(getCurrentTimestamp())} | 地点数: {currentMeasurementData.size}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {Array.from(currentMeasurementData.entries()).map(([locationId, data]) => (
+                  <div key={locationId} className="p-3 bg-muted/50 rounded-lg border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm">地点 {locationId}</span>
+                      <Badge variant="outline" className="text-xs">
+                        <MapPin className="w-3 h-3 mr-1" />ID: {locationId}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">流量速度</span>
+                        <span className="font-mono text-sm font-semibold text-primary">
+                          {data.velocity_record.toFixed(2)} km/h
+                        </span>
                       </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 预测数据 */}
-          {currentPredictionData && (
-            <Card className="transition-all duration-300 ease-in-out animate-in slide-in-from-right-4">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  当前预测数据
-                </CardTitle>
-                <CardDescription>
-                  时间: {formatTimestamp(getCurrentTimestamp())} | 地点数: {currentPredictionData.measurements.length}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {currentPredictionData.measurements.map((measurement) => {
-                    // 找到当前时间步对应的预测数据点
-                    const currentTimeData =
-                      measurement.flow_data.find((record) => record.time === getCurrentTimestamp()) ||
-                      measurement.flow_data[0] // 如果找不到精确匹配，使用第一个数据点
-
-                    return (
-                      <div
-                        key={measurement.location_id}
-                        className="p-3 bg-primary/5 rounded-lg border border-primary/20"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-sm">地点 {measurement.location_id}</span>
-                          <Badge variant="default" className="text-xs">
-                            <TrendingUp className="w-3 h-3 mr-1" />
-                            预测
-                          </Badge>
-                        </div>
-                        {currentTimeData ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">预测速度</span>
-                              <span className="font-mono text-sm font-semibold text-primary">
-                                {currentTimeData.velocity_record.toFixed(2)} km/h
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">预测时间</span>
-                              <span className="text-xs font-mono">{formatTimestamp(currentTimeData.time)}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">预测ID</span>
-                              <span className="text-xs font-mono">#{currentTimeData.record_id}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-muted-foreground text-center py-2">当前时间步无预测数据</div>
-                        )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">记录时间</span>
+                        <span className="text-xs font-mono">{formatTimestamp(data.time)}</span>
                       </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">记录ID</span>
+                        <span className="text-xs font-mono">#{data.record_id}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {/* Prediction Data Card: Renders only if there is data for the current time step */}
+        {currentPredictionData && currentPredictionData.size > 0 && (
+          <Card className="transition-all duration-300 ease-in-out animate-in slide-in-from-right-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5" />当前预测数据</CardTitle>
+              <CardDescription>
+                时间: {formatTimestamp(getCurrentTimestamp())} | 地点数: {currentPredictionData.size}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {Array.from(currentPredictionData.entries()).map(([locationId, data]) => (
+                  <div key={locationId} className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm">地点 {locationId}</span>
+                      <Badge variant="default" className="text-xs">
+                        <TrendingUp className="w-3 h-3 mr-1" />预测
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">预测速度</span>
+                        <span className="font-mono text-sm font-semibold text-primary">
+                          {data.velocity_record.toFixed(2)} km/h
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">预测时间</span>
+                        <span className="text-xs font-mono">{formatTimestamp(data.time)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">预测ID</span>
+                        <span className="text-xs font-mono">#{data.record_id}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* 统计信息 */}
       {selectedScene && (
