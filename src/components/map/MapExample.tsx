@@ -133,12 +133,10 @@ const lines: LineData[] = [
 
 // 主地图组件
 export function MapExample() {
-  const mapRef = useRef<MapRef>(null);
 
   return (
     <div style={{ height: '100vh', width: '100vw' }}>
       <Map
-        ref={mapRef}
         initialViewState={{
           longitude: 116.39657,
           latitude: 39.95616,

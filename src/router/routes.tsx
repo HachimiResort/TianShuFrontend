@@ -13,6 +13,7 @@ const NotFound = lazy(() => import("@/pages/not-found"))
 const LocationPage = lazy(() => import("@/pages/Location"))
 const Manager = lazy(()=> import("@/pages/Manager"))
 const TestData = lazy(() => import("@/pages/test-data"))
+const SmartCity = lazy(() => import("@/pages/smart-city"))
 
 // 加载状态组件
 const PageLoading = () => <div className="flex h-screen items-center justify-center">加载中...</div>
@@ -110,6 +111,18 @@ export const routes: RouteConfig[] = [
     ),
     meta: {
       title: "数据接口测试",
+      requiresAuth: true,
+    },
+  },
+  {
+    path: "smart-city",
+    element: (
+      <Suspense fallback={<PageLoading />}>
+        <SmartCity></SmartCity>
+      </Suspense>
+    ),
+    meta: {
+      title: "智慧城市交通",
       requiresAuth: true,
     },
   },
