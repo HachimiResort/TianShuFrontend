@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo, use } from "react"
 import MapReact, { Marker } from "react-map-gl/maplibre"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -483,17 +483,20 @@ export default function CityMap() {
     loadingControllerRef.current.abort = true
     loadingControllerRef.current = { abort: false }
 
-    const [locationsData, graphData] = await Promise.all([
+    await Promise.all([
       fetchLocations(selectedScene.scene_id),
       fetchGraph(selectedScene.area_id),
     ])
 
-    if (locationsData.length > 0 && graphData.length > 0) {
-      showToast(`成功加载 ${locationsData.length} 个地点和 ${graphData.length} 条边`, "success")
+  }, [selectedScene, fetchLocations, fetchGraph, manageStreamingBuffer, showToast])
+
+  useEffect(() => {
+    if (locations.length > 0 && graphEdges.length > 0) {
+      showToast(`成功加载 ${locations.length} 个地点和 ${graphEdges.length} 条边`, "success")
 
       // 调整地图视角到数据范围
-      if (locationsData.length > 0) {
-        const bounds = locationsData.reduce(
+      if (locations.length > 0) {
+        const bounds = locations.reduce(
           (acc, location) => ({
             minLng: Math.min(acc.minLng, location.longitude),
             maxLng: Math.max(acc.maxLng, location.longitude),
@@ -501,10 +504,10 @@ export default function CityMap() {
             maxLat: Math.max(acc.maxLat, location.latitude),
           }),
           {
-            minLng: locationsData[0].longitude,
-            maxLng: locationsData[0].longitude,
-            minLat: locationsData[0].latitude,
-            maxLat: locationsData[0].latitude,
+            minLng: locations[0].longitude,
+            maxLng: locations[0].longitude,
+            minLat: locations[0].latitude,
+            maxLat: locations[0].latitude,
           },
         )
 
@@ -520,7 +523,7 @@ export default function CityMap() {
 
       manageStreamingBuffer(0, loadingControllerRef.current)
     }
-  }, [selectedScene, fetchLocations, fetchGraph, manageStreamingBuffer, showToast])
+  }, [locations]);
 
   // 时间步变化处理
   const handleTimeStepChange = useCallback(
