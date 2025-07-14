@@ -24,7 +24,7 @@ import { useUserInfo } from "@/hooks/use-auth"
 import {apiService} from "@/services/api.ts";
 import {useEffect, useState} from "react";
 import type { GetMeResponse } from "@/types/index"
-import MusicPlayer from "@/components/auth/MusicPlayer.tsx";
+import MusicPlayer from "@/components/auth/musicPlayer.tsx";
 
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
