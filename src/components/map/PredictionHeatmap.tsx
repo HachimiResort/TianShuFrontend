@@ -51,9 +51,10 @@ export default function PredictionHeatmap({ geojson, minVelocity, maxVelocity }:
       0.1, 'rgba(206,239,206,0.1)', // 很淡的绿色（几乎不可见）
       0.2, 'rgba(206,239,206,0.3)', // 淡绿色
       0.4, 'rgba(204,239,169,0.4)', // 黄绿色
-      0.6, '#ffffd7ff',               // 黄色
-      0.8, '#fff200ff',               // 橙色  
-      1, '#FF8000'                  // 红色（最突出）
+      0.7, '#d4ffb3ff',               // 浅黄色
+      0.8, '#ffde8cff',               // 黄色
+      0.9, '#ffb300ff',               // 橙色  
+      1, '#ff6200ff'                  // 红色（最突出）
     ],
     'heatmap-opacity': 0.9
   } as any,
