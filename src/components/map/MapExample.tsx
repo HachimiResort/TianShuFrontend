@@ -1,8 +1,6 @@
-import  { useRef } from 'react';
 import { Map } from 'react-map-gl/maplibre';
 import ColorLine from './ColorLine';
 // import AnimatedLine from './AnimatedLine';
-import type { MapRef } from 'react-map-gl/maplibre';
 import type { LineData } from '@/types/index'
 import 'maplibre-gl/dist/maplibre-gl.css';
 

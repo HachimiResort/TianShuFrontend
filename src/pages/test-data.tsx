@@ -211,7 +211,8 @@ export default function TestDataPage() {
   const dataCache = useRef(new DataCache())
   // 拖拽相关状态
   const [isDragging, setIsDragging] = useState(false)
-
+  isDragging
+  
   // 基础状态
   const [scenes, setScenes] = useState<Scene[]>([])
   const [selectedScene, setSelectedScene] = useState<Scene | null>(null)
