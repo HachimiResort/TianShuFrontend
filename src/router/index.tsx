@@ -7,7 +7,7 @@ import { routes, type RouteConfig } from "./routes"
 // 获取用户是否已认证的函数
 const isAuthenticated = (): boolean => {
   const token = localStorage.getItem("token");
-  if (token &&!isTokenExpired(token)) {
+  if (token) {
     return true;
   }
   // 如果 token 过期，清除 localStorage 中的 token 和 userid
@@ -58,27 +58,6 @@ const matchRoutePath = (routePath: string, actualPath: string): boolean => {
   });
 };
 
-export const getTokenExpiration = (token: string): number | null => {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      return null;
-    }
-    const payloadBase64 = parts[1];
-    const payloadJson = atob(payloadBase64);
-    const payload = JSON.parse(payloadJson);
-    return payload.exp;
-  } catch (error) {
-    console.error('解析 JWT 时出错:', error);
-    return null;
-  }
-};
-
-export const isTokenExpired = (token: string): boolean => {
-  const expiration = getTokenExpiration(token);
-  console.log("过期时间",expiration,"当前时间",Date.now() / 1000)
-  return expiration ? Date.now() / 1000 > expiration : true;
-};
 
 export const AppRouter = () => {
   const location = useLocation();
@@ -97,7 +76,11 @@ export const AppRouter = () => {
     // 路由守卫逻辑
     if (currentRoute?.meta?.requiresAuth && !isAuthenticated()) {
       //console.log("[路由守卫] 未认证，重定向到登录页");
-      navigate("/login", { replace: true });
+      navigate("/login", {
+        replace: true,
+        state: { message: "请先登录！", variant: "destructive" }
+      });
+
 
     } else {
       //console.log("[路由守卫] 允许访问:", location.pathname);
