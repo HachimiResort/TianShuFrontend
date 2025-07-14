@@ -35,7 +35,7 @@ interface UserData {
   username: string
   email: string
   phonenumber: string
-  userid: number
+  user_id: number
   is_admin: boolean
 }
 
@@ -103,6 +103,13 @@ export default function UsersPage() {
         showToast("获取用户数据成功", "success")
         if (response.data.code === 0) {
           const userData = response.data.message.users
+
+
+          console.log('原始 userData:', userData);
+
+
+          const userIds = userData.map(user => user.user_id);
+          console.log(userIds)
           setUsers(userData)
           setTotalPages(Math.ceil(userData.length / ITEMS_PER_PAGE))
         } else {
@@ -172,6 +179,7 @@ export default function UsersPage() {
   const getCurrentPageUsers = useCallback(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
     const endIndex = startIndex + ITEMS_PER_PAGE
+
     return users.slice(startIndex, endIndex)
   }, [users, currentPage])
 
@@ -208,7 +216,7 @@ export default function UsersPage() {
       return
     }
 
-    const success = await updateUser(editingUser.userid, editFormData)
+    const success = await updateUser(editingUser.user_id, editFormData)
     if (success) {
       setEditDialogOpen(false)
       setEditingUser(null)
@@ -225,7 +233,7 @@ export default function UsersPage() {
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingUser) return
 
-    const success = await deleteUser(deletingUser.userid)
+    const success = await deleteUser(deletingUser.user_id)
     if (success) {
       setDeleteDialogOpen(false)
       setDeletingUser(null)
@@ -304,9 +312,10 @@ export default function UsersPage() {
                   </TableHeader>
                   <TableBody>
                     {getCurrentPageUsers().map((user) => (
-                      <TableRow key={user.userid} className="transition-colors duration-300 ease-in-out">
+
+                      <TableRow key={user.user_id} className="transition-colors duration-300 ease-in-out">
                         <TableCell className="font-medium transition-colors duration-300 ease-in-out">
-                          {user.userid}
+                          {user.user_id}
                         </TableCell>
                         <TableCell className="transition-colors duration-300 ease-in-out">{user.username}</TableCell>
                         <TableCell className="transition-colors duration-300 ease-in-out">{user.email}</TableCell>
