@@ -75,6 +75,15 @@ export const routes: RouteConfig[] = [
           requiresAuth: true,
         },
       },
+      {
+        path: "smart-city",
+        element: <SmartCity/>,
+
+        meta: {
+          title: "智慧城市交通",
+          requiresAuth: true,
+        },
+      },
     ],
   },
   {
@@ -114,18 +123,7 @@ export const routes: RouteConfig[] = [
       requiresAuth: true,
     },
   },
-  {
-    path: "smart-city",
-    element: (
-      <Suspense fallback={<PageLoading />}>
-        <SmartCity></SmartCity>
-      </Suspense>
-    ),
-    meta: {
-      title: "智慧城市交通",
-      requiresAuth: true,
-    },
-  },
+
   {
     path: "*",
     element: (
