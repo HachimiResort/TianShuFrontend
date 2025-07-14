@@ -80,13 +80,13 @@ jobs:
     # 9. 将服务器的公钥添加到 known_hosts
     - name: Add remote server to known hosts
       if: github.event_name == 'push'
-      run: ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+      run: ssh-keyscan -p ${{ secrets.SERVER_PORT }} -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
     # 10. 部署到服务器
     - name: Deploy to Server
       if: github.event_name == 'push'
       run: |
-        ssh root@${{ secrets.SERVER_HOST }} << 'EOF'
+        ssh root@${{ secrets.SERVER_HOST }} -p ${{ secrets.SERVER_PORT }} << 'EOF'
           REGISTRY="${{ env.ALIYUN_REGISTRY }}"
           USER="${{ secrets.ALIYUN_DOCKER_HUB_NAMESPACE }}"
           IMAGE_NAME="${{ env.IMAGE_NAME }}"
