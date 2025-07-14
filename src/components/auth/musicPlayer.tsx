@@ -5,10 +5,10 @@ import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
 
 // 假设的音乐列表
 const musicList = [
-    "music/不再曼波.mp3",
-    "music/哈基米的夏天.mp3",
-    "music/哈雪大冒险.flac",
-    "music/梦中的哈基米.mp3"
+    "/public/music/不再曼波.mp3",
+    "/public/music/哈基米的夏天.mp3",
+    "/public/music/哈雪大冒险.flac",
+    "/public/music/梦中的哈基米.mp3"
 ];
 
 // 从文件路径提取歌曲名称的辅助函数
