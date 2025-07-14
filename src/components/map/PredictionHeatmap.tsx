@@ -14,43 +14,54 @@ export default function PredictionHeatmap({ geojson, minVelocity, maxVelocity }:
   // 防止 min/max 相等导致计算错误
   const safeMin = minVelocity === maxVelocity ? minVelocity - 1 : minVelocity;
   const safeMax = minVelocity === maxVelocity ? maxVelocity + 1 : maxVelocity;
-  
-  // 计算中间值，用于更好的颜色过渡
-  const midValue = (safeMin + safeMax) / 2;
 
-  const speedLayer = {
-    id: 'prediction-speed-layer',
-    type: 'circle' as const,
-    source: 'prediction-speed-source',
-    paint: {
-      'circle-radius': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        0, 3,
-        9, 30,
-        15, 40
-      ],
-      'circle-color': [
-        'interpolate',
-        ['linear'],
-        ['get', 'velocity'],
-        safeMin, '#FF0000',                    // 最低速度 → 红色
-        safeMin + (safeMax - safeMin) * 0.25, '#FF8000',  // 25% → 橙色
-        safeMin + (safeMax - safeMin) * 0.5,  '#FFFF00',  // 50% → 黄色
-        safeMin + (safeMax - safeMin) * 0.75, '#ccefa9ff',  // 75% → 黄绿色
-        safeMax, '#ceefceff'                     // 最高速度 → 绿色
-      ],
-      'circle-opacity': 0.7,
-      'circle-stroke-width': 3,
-      'circle-stroke-color': '#FFFFFF',
-      'circle-stroke-opacity': 0.5
-    } as any,
-  }
+  const heatmapLayer = {
+  id: 'prediction-heatmap-layer',
+  type: 'heatmap' as const,
+  source: 'prediction-heatmap-source',
+  paint: {
+    'heatmap-weight': [
+      'interpolate',
+      ['linear'],
+      ['get', 'velocity'],
+      safeMin, 0.8,      // 低速度给高权重（让红色更突出）
+      safeMax, 0.1     // 高速度给低权重（让绿色不明显）
+    ],
+    'heatmap-intensity': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      0, 1,
+      9, 3,
+      15, 5
+    ],
+    'heatmap-radius': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      0, 10,
+      9, 40,
+      15, 70
+    ],
+    'heatmap-color': [
+      'interpolate',
+      ['linear'],
+      ['heatmap-density'],
+      0, 'rgba(0,0,0,0)',           // 完全透明
+      0.1, 'rgba(206,239,206,0.1)', // 很淡的绿色（几乎不可见）
+      0.2, 'rgba(206,239,206,0.3)', // 淡绿色
+      0.4, 'rgba(204,239,169,0.4)', // 黄绿色
+      0.6, '#ffffd7ff',               // 黄色
+      0.8, '#fff200ff',               // 橙色  
+      1, '#FF8000'                  // 红色（最突出）
+    ],
+    'heatmap-opacity': 0.9
+  } as any,
+}
 
   return (
-    <Source id="prediction-speed-source" type="geojson" data={geojson as any}>
-      <Layer {...(speedLayer as any)} />
+    <Source id="prediction-heatmap-source" type="geojson" data={geojson as any}>
+      <Layer {...(heatmapLayer as any)} />
     </Source>
   )
 }
