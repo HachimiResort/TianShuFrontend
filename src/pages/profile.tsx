@@ -25,6 +25,8 @@ export default function Profile() {
     lastLogin: ""
   })
 
+
+
   const userid = localStorage.getItem("userid")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,18 +46,22 @@ export default function Profile() {
     }
 
     if (userInfo) {
+      console.log(userInfo)
       setFormData({
-        username: userInfo.message.username,
-        email: userInfo.message.email,
-        phone: userInfo.message.phonenumber || "",
-        role: userInfo.message.is_admin ? "admin" : "user",
+        username: userInfo.message.user.username,
+        email: userInfo.message.user.email,
+        phone: userInfo.message.user.phonenumber || "",
+        role: userInfo.message.user.is_admin ? "admin" : "user",
         avatar: "/placeholder.svg?height=100&width=100",
         joinDate: "",
         lastLogin: ""
       })
+
       setLoading(false)
     }
   }, [userInfo, userLoading, userError])
+
+
 
   const handleSave = async () => {
     try {
@@ -64,9 +70,10 @@ export default function Profile() {
         email: formData.email,
         phonenumber: formData.phone
       };
-      const response: ApiResponse<UserInfoResponse> = await apiService.put('/auth/updateProfile', body);
+
+      const response: ApiResponse<UserInfoResponse> = await apiService.put(`/auth/users/${userid}/updateProfile`, body);
       if (response.success && response.data) {
-        console.log("response",response)
+        console.log("更新单人信息response",response)
         if (response.data.code==0) {
           toast({
             description: "更新成功！",
@@ -83,9 +90,9 @@ export default function Profile() {
 
         setFormData({
           ...formData,
-          username: response.data.message.username,
-          email: response.data.message.email,
-          phone: response.data.message.phonenumber || ""
+          username: response.data.message.user.username,
+          email: response.data.message.user.email,
+          phone: response.data.message.user.phonenumber || ""
         });
       } else {
         toast({
@@ -107,10 +114,10 @@ export default function Profile() {
     // 重置为服务器数据
     if (userInfo) {
       setFormData({
-        username: userInfo.message.username,
-        email: userInfo.message.email,
-        phone: userInfo.message.phonenumber || "",
-        role: userInfo.message.is_admin ? "admin" : "user",
+        username: userInfo.message.user.username,
+        email: userInfo.message.user.email,
+        phone: userInfo.message.user.phonenumber || "",
+        role: userInfo.message.user.is_admin ? "admin" : "user",
         avatar: "/placeholder.svg?height=100&width=100",
         joinDate: "",
         lastLogin: ""

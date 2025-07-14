@@ -2,7 +2,8 @@
 
 import type React from "react"
 import { useState, useRef, useCallback } from "react"
-import MapReact, { Marker, Source, Layer, type MapRef } from "react-map-gl/maplibre"
+import MapReact, { Marker, type MapRef } from "react-map-gl/maplibre"
+import ColorLine from "./ColorLine"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,6 +13,8 @@ import { Upload, Download, Trash2, FileText, X } from "lucide-react"
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 // 类型定义
+import type { LineData } from "@/types";
+
 interface CoordinatePoint {
   index: string
   sensor_id: string
@@ -19,22 +22,15 @@ interface CoordinatePoint {
   longitude: number
 }
 
-interface RelationPoint {
-  index: string
-  sensor_id: string
-  longitude: string
-  latitude: string
-}
-
-interface Relation {
-  id: string
-  from: RelationPoint
-  to: RelationPoint
+interface Relation extends LineData {
+  id: string;
 }
 
 interface RelationData {
-  relation: Relation[]
+  relation: Relation[];
 }
+// 随机生成16进制颜色
+const generateRandomHexColor = (): string => `#${Math.floor(Math.random() * 0x1000000).toString(16).padStart(6, '0')}`;
 
 const MAP_STYLE = "https://api.maptiler.com/maps/streets/style.json?key=AKUofKhmm1j1S5bzzZ0F"
 
@@ -174,51 +170,69 @@ export function MapTest() {
   // 2. 导入JSON关系文件
   const handleJSONImport = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0]
-      if (!file) return
+      const file = event.target.files?.[0];
+      if (!file) return;
 
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const jsonData: RelationData = JSON.parse(e.target?.result as string)
-
+          const jsonData = JSON.parse(e.target?.result as string);
           if (!jsonData.relation || !Array.isArray(jsonData.relation)) {
-            showToast("JSON文件格式错误", "destructive")
-            return
+            showToast("JSON文件格式错误", "destructive");
+            return;
           }
-
-          const validRelations: Relation[] = []
-          const invalidRelations: string[] = []
-
-          jsonData.relation.forEach((relation) => {
-            const fromExists = coordinatePoints.has(relation.from.index)
-            const toExists = coordinatePoints.has(relation.to.index)
-
-            if (fromExists && toExists) {
-              validRelations.push(relation)
-            } else {
-              invalidRelations.push(relation.id)
+          const validRelations: Relation[] = [];
+          const invalidRelations: string[] = [];
+          jsonData.relation.forEach((relation: any) => {
+            // 兼容旧格式，转换为LineData格式
+            let startPoint: [number, number];
+            let endPoint: [number, number];
+            let index: string | undefined;
+            if (relation.from && relation.to) {
+              const fromExists = coordinatePoints.has(relation.from.index);
+              const toExists = coordinatePoints.has(relation.to.index);
+              if (fromExists && toExists) {
+                startPoint = [Number.parseFloat(relation.from.longitude), Number.parseFloat(relation.from.latitude)];
+                endPoint = [Number.parseFloat(relation.to.longitude), Number.parseFloat(relation.to.latitude)];
+                index = `${relation.from.index}-${relation.to.index}`;
+                validRelations.push({
+                  id: relation.id || `${relation.from.index}-${relation.to.index}-${Date.now()}`,
+                  startPoint,
+                  endPoint,
+                  startColor: generateRandomHexColor(),
+                  endColor: generateRandomHexColor(),
+                  index,
+                });
+              } else {
+                invalidRelations.push(relation.id);
+              }
+            } else if (relation.startPoint && relation.endPoint) {
+              // 已是LineData格式
+              validRelations.push({
+                ...relation,
+                id: relation.id || `${Date.now()}-${Math.random()}`,
+                startColor: relation.startColor || generateRandomHexColor(),
+                endColor: relation.endColor || generateRandomHexColor(),
+                index: relation.index,
+              });
             }
-          })
-
-          setRelations((prev) => [...prev, ...validRelations])
-
+          });
+          setRelations((prev) => [...prev, ...validRelations]);
           if (invalidRelations.length > 0) {
-            showToast(`关系和坐标点不对应，忽略了 ${invalidRelations.length} 个关系`, "destructive")
+            showToast(`关系和坐标点不对应，忽略了 ${invalidRelations.length} 个关系`, "destructive");
           }
-
           if (validRelations.length > 0) {
-            showToast(`成功导入 ${validRelations.length} 个关系`, "success")
+            showToast(`成功导入 ${validRelations.length} 个关系`, "success");
           }
         } catch (error) {
-          showToast("JSON文件解析失败", "destructive")
+          showToast("JSON文件解析失败", "destructive");
         }
-      }
-      reader.readAsText(file)
-      event.target.value = ""
+      };
+      reader.readAsText(file);
+      event.target.value = "";
     },
     [coordinatePoints, showToast],
-  )
+  );
 
   // 3. 清除所有关系
   const clearAllRelations = useCallback(() => {
@@ -254,12 +268,18 @@ export function MapTest() {
           return
         }
 
-        // 检查关系是否已存在
+        // 检查关系是否已存在（比较起止点坐标和index）
         const relationExists = relations.some(
           (r) =>
-            (r.from.index === fromIndex && r.to.index === toIndex) ||
-            (r.from.index === toIndex && r.to.index === fromIndex),
-        )
+            ((r.startPoint[0] === coordinatePoints.get(fromIndex)?.longitude &&
+              r.startPoint[1] === coordinatePoints.get(fromIndex)?.latitude &&
+              r.endPoint[0] === coordinatePoints.get(toIndex)?.longitude &&
+              r.endPoint[1] === coordinatePoints.get(toIndex)?.latitude) ||
+             (r.startPoint[0] === coordinatePoints.get(toIndex)?.longitude &&
+              r.startPoint[1] === coordinatePoints.get(toIndex)?.latitude &&
+              r.endPoint[0] === coordinatePoints.get(fromIndex)?.longitude &&
+              r.endPoint[1] === coordinatePoints.get(fromIndex)?.latitude))
+        );
 
         if (relationExists) {
           showToast("该关系已存在", "destructive")
@@ -272,18 +292,11 @@ export function MapTest() {
 
         const newRelation: Relation = {
           id: `${fromIndex}-${toIndex}-${Date.now()}`,
-          from: {
-            index: fromIndex,
-            sensor_id: fromPoint.sensor_id,
-            longitude: fromPoint.longitude.toString(),
-            latitude: fromPoint.latitude.toString(),
-          },
-          to: {
-            index: toIndex,
-            sensor_id: toPoint.sensor_id,
-            longitude: toPoint.longitude.toString(),
-            latitude: toPoint.latitude.toString(),
-          },
+          startPoint: [fromPoint.longitude, fromPoint.latitude],
+          endPoint: [toPoint.longitude, toPoint.latitude],
+          startColor: generateRandomHexColor(),
+          endColor: generateRandomHexColor(),
+          index: `${fromIndex}-${toIndex}`,
         }
 
         setRelations((prev) => [...prev, newRelation])
@@ -465,45 +478,16 @@ export function MapTest() {
             </Marker>
           ))}
 
-          {/* 渲染关系线段 - 参照MapLocation的方式 */}
-          {relations.map((relation) => {
-            console.log(relation)
-            return (
-            <Source
+          {/* 渲染关系线段 - 使用 ColorLine 组件 */}
+          {relations.map((relation) => (
+            <ColorLine
               key={relation.id}
-              id={relation.id}
-              type="geojson"
-              data={{
-                type: "Feature",
-                geometry: {
-                  type: "LineString",
-                  coordinates: [
-                    [Number.parseFloat(relation.from.longitude), Number.parseFloat(relation.from.latitude)],
-                    [Number.parseFloat(relation.to.longitude), Number.parseFloat(relation.to.latitude)],
-                  ],
-                },
-                properties: {
-                  id: relation.id,
-                  clickable: isDeleteMode,
-                },
-              }}
-            >
-              <Layer
-                id={relation.id}
-                type="line"
-                paint={{
-                  "line-color": isDeleteMode ? "#ef4444" : "#13db1dff",
-                  "line-width": 6,
-                  "line-opacity": 0.8,
-                }}
-                layout={{
-                  "line-cap": "round",
-                  "line-join": "round",
-                }}
-              />
-            </Source>
-          )
-          })}
+              startPoint={relation.startPoint}
+              endPoint={relation.endPoint}
+              startColor={relation.startColor}
+              endColor={relation.endColor}
+            />
+          ))}
         </MapReact>
       </div>
     </div>

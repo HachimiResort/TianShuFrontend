@@ -54,7 +54,9 @@ export function useAuth() {
         // setUser(response.data.code===)
         const token = `${response.data.message.access_token}`
         const userid = response.data.message.userid.toString() // 提取 userid 并转换为字符串
-        console.log(token)
+
+
+
         localStorage.setItem("token", token)
         localStorage.setItem("userid", userid)
         return { success: true }
@@ -117,7 +119,9 @@ export function useUserInfo(userid: string) {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const response: ApiResponse<UserInfoResponse> = await apiService.get<UserInfoResponse>(`/auth/user/${userid}`);
+
+        const response: ApiResponse<UserInfoResponse> = await apiService.get<UserInfoResponse>(`/auth/users/${userid}`);
+
         if (response.success && response.data) {
           setUserInfo(response.data);
         } else {
