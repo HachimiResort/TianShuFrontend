@@ -109,7 +109,7 @@ const MusicPlayer = () => {
         <div className="flex flex-col items-center space-y-4" style={{ maxWidth: '100%', width: '300px' }}>
             <div className="relative" style={{ width: '100px', height: '100px', margin: '0 auto' }}>
                 {/* 显示图片，应用旋转动画样式 */}
-                <img src="public/hachimitsu.svg" alt="音乐相关图片"
+                <img src="hachimitsu.svg" alt="音乐相关图片"
                      style={{
                          width: '100%',
                          height: '100%',

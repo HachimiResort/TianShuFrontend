@@ -1,8 +1,6 @@
-import  { useRef } from 'react';
 import { Map } from 'react-map-gl/maplibre';
 import ColorLine from './ColorLine';
 // import AnimatedLine from './AnimatedLine';
-import type { MapRef } from 'react-map-gl/maplibre';
 import type { LineData } from '@/types/index'
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -133,12 +131,10 @@ const lines: LineData[] = [
 
 // 主地图组件
 export function MapExample() {
-  const mapRef = useRef<MapRef>(null);
 
   return (
     <div style={{ height: '100vh', width: '100vw' }}>
       <Map
-        ref={mapRef}
         initialViewState={{
           longitude: 116.39657,
           latitude: 39.95616,
