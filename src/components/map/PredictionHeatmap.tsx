@@ -1,5 +1,4 @@
 import { Source, Layer } from 'react-map-gl/maplibre'
-import 'maplibre-gl/dist/maplibre-gl.css'
 
 interface PredictionHeatmapProps {
   geojson: GeoJSON.FeatureCollection | null
@@ -9,39 +8,49 @@ interface PredictionHeatmapProps {
 
 export default function PredictionHeatmap({ geojson, minVelocity, maxVelocity }: PredictionHeatmapProps) {
   if (!geojson || !geojson.features.length) return null;
-
-  // 防止 min/max 相等导致全红
+  
+  console.log("velocity range:", minVelocity, "to", maxVelocity);
+  
+  // 防止 min/max 相等导致计算错误
   const safeMin = minVelocity === maxVelocity ? minVelocity - 1 : minVelocity;
   const safeMax = minVelocity === maxVelocity ? maxVelocity + 1 : maxVelocity;
+  
+  // 计算中间值，用于更好的颜色过渡
+  const midValue = (safeMin + safeMax) / 2;
 
-  const heatmapLayer = {
-    id: 'prediction-heatmap-layer',
-    type: 'heatmap' as const,
-    source: 'prediction-heatmap-source',
+  const speedLayer = {
+    id: 'prediction-speed-layer',
+    type: 'circle' as const,
+    source: 'prediction-speed-source',
     paint: {
-      'heatmap-weight': [
+      'circle-radius': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        0, 3,
+        9, 30,
+        15, 40
+      ],
+      'circle-color': [
         'interpolate',
         ['linear'],
         ['get', 'velocity'],
-        safeMin, 1,
-        safeMax, 0
+        safeMin, '#FF0000',                    // 最低速度 → 红色
+        safeMin + (safeMax - safeMin) * 0.25, '#FF8000',  // 25% → 橙色
+        safeMin + (safeMax - safeMin) * 0.5,  '#FFFF00',  // 50% → 黄色
+        safeMin + (safeMax - safeMin) * 0.75, '#ccefa9ff',  // 75% → 黄绿色
+        safeMax, '#ceefceff'                     // 最高速度 → 绿色
       ],
-      'heatmap-color': [
-        'interpolate',
-        ['linear'],
-        ['heatmap-density'],
-        0, '#FF0000',
-        0.5, '#FFFF00',
-        1, '#00FF00'
-      ],
-      'heatmap-radius': 18, // 更小的半径
-      'heatmap-opacity': 0.7,
+      'circle-opacity': 0.7,
+      'circle-stroke-width': 3,
+      'circle-stroke-color': '#FFFFFF',
+      'circle-stroke-opacity': 0.5
     } as any,
   }
 
   return (
-    <Source id="prediction-heatmap-source" type="geojson" data={geojson as any}>
-      <Layer {...(heatmapLayer as any)} />
+    <Source id="prediction-speed-source" type="geojson" data={geojson as any}>
+      <Layer {...(speedLayer as any)} />
     </Source>
   )
 }

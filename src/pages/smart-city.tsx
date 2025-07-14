@@ -371,8 +371,10 @@ export default function CityMap() {
             step: rawData.step,
             measurements,
           }
+          console.log("374:fetchData:" + data)
           // 只存储 A ~ A+step-1 的时间步
-          dataCache.current.processAndCacheData(scene, data, true)
+          dataCache.current.processAndCacheData(scene,data, true)
+          console.log(data)
           return data
         }
         return null
@@ -587,6 +589,8 @@ export default function CityMap() {
     (newTimeStep: number) => {
       if (newTimeStep === currentTimeStep || !selectedScene) return
       setCurrentTimeStep(newTimeStep)
+      console.log('当前预测数据:', dataCache.current.getDataForTimeStep(newTimeStep)?.prediction)
+
     },
     [selectedScene, currentTimeStep],
   )
@@ -769,6 +773,7 @@ export default function CityMap() {
           velocity: data.velocity_record,
         },
       };
+      
     }).filter(Boolean);
 
     if (features.length === 0) return null;

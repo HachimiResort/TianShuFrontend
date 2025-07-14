@@ -146,12 +146,25 @@ export default memo(function ColorLine({ startPoint, endPoint, startColor, endCo
     }
 
     return () => {
-      if (map.getLayer(layerId)) {
-        map.removeLayer(layerId);
+      const map = mapRef?.getMap?.();
+      if (!map || !map.getStyle()) return; // 检查 map 和 style 都存在
+      
+      try {
+        if (map.getLayer(layerId)) {
+          map.removeLayer(layerId);
+        }
+      } catch (error) {
+        console.warn('Error removing layer:', error);
       }
-      if (map.getSource(sourceId)) {
-        map.removeSource(sourceId);
+      
+      try {
+        if (map.getSource(sourceId)) {
+          map.removeSource(sourceId);
+        }
+      } catch (error) {
+        console.warn('Error removing source:', error);
       }
+      
       isInitializedRef.current = false;
     };
   }, [mapRef, startPoint, endPoint]); // 只依赖坐标，不依赖颜色
