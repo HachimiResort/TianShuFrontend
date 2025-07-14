@@ -124,7 +124,7 @@ const MusicPlayer = () => {
             </div>
 
             {/* 显示当前播放的歌曲名称 */}
-            <div className="text-center font-medium text-white">
+            <div className="text-center font-medium text-gray">
                 {getSongName(musicList[currentIndex])}
             </div>
 
