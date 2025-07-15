@@ -39,7 +39,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const fetchUserRole = async () => {
         const response = await apiService.get<GetMeResponse>('/auth/me');
         if (response.success && response.data) {
-          console.log(response)
           if (response.data.message.msg === 'Token无效或已失效') {
             localStorage.removeItem("token");
             localStorage.removeItem("userid");
