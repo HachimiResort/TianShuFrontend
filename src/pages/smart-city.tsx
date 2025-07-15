@@ -13,6 +13,7 @@ import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronU
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import ColorLine from "@/components/map/ColorLine"
 import PredictionHeatmap from "@/components/map/PredictionHeatmap"
+import {useTheme} from "@/components/theme-context.tsx";
 
 // 复用 test-data.tsx 的数据类型定义
 interface Scene {
@@ -204,6 +205,7 @@ class DataCache {
 export default function CityMap() {
   const { toast } = useToast()
   const dataCache = useRef(new DataCache())
+  const { theme } = useTheme();
 
   // 基础状态
   const [scenes, setScenes] = useState<Scene[]>([])
@@ -819,7 +821,7 @@ export default function CityMap() {
       {/* 顶部可折叠状态栏 */}
       <div className="absolute top-2 left-2 right-2 z-10 max-w-xl mx-auto">
         <Collapsible open={isTopBarOpen} onOpenChange={setIsTopBarOpen}>
-          <Card className="bg-white/60 backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out text-sm p-2">
+          <Card className={`${theme === 'light' ? 'bg-white/20' : 'bg-black/70'} backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out text-sm p-2"`}>
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-2">
                 <div className="flex items-center justify-between">
