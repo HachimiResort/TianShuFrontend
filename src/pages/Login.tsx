@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import {useEffect, useState} from "react"
 import { LoginForm } from "@/components/auth/login-form"
 import { RegisterForm } from "@/components/auth/register-form"
+import {useLocation} from "react-router-dom";
+import { toast } from "@/components/ui/use-toast"
 
 export function Login() {
   const [isLogin, setIsLogin] = useState(true)
@@ -23,6 +25,20 @@ export function Login() {
       setIsAnimating(false)
     }, 150)
   }
+
+  const location = useLocation();
+  const { message, variant } = location.state || {};
+
+  useEffect(() => {
+    if (message) {
+      toast({
+        description: message,
+        variant: variant,
+        duration: 2000,
+      })
+    }
+  }, [message, variant]);
+
 
   return (
     <div className="w-full max-w-md">
