@@ -8,9 +8,7 @@ interface PredictionHeatmapProps {
 
 export default function PredictionHeatmap({ geojson, minVelocity, maxVelocity }: PredictionHeatmapProps) {
   if (!geojson || !geojson.features.length) return null;
-  
-  console.log("velocity range:", minVelocity, "to", maxVelocity);
-  
+
   // 防止 min/max 相等导致计算错误
   const safeMin = minVelocity === maxVelocity ? minVelocity - 1 : minVelocity;
   const safeMax = minVelocity === maxVelocity ? maxVelocity + 1 : maxVelocity;

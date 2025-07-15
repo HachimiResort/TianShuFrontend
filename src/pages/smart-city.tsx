@@ -650,10 +650,10 @@ export default function CityMap() {
     const maxVelocity = Math.max(...velocities)
 
     const getColor = (velocity: number): string => {
-      if (maxVelocity === minVelocity) return "#00FF00" // 如果所有速度相同，使用绿色
+      if (maxVelocity === minVelocity) return "#05d105ff" // 如果所有速度相同，使用绿色
       const ratio = (velocity - minVelocity) / (maxVelocity - minVelocity)
       const red = Math.round(255 * (1 - ratio))
-      const green = Math.round(255 * ratio)
+      const green = Math.round(230 * ratio)
       // 返回16进制字符串
       return `#${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}00`
     }
@@ -775,6 +775,8 @@ export default function CityMap() {
       };
       
     }).filter(Boolean);
+
+    console.log("This is the features: " + features)
 
     if (features.length === 0) return null;
     
