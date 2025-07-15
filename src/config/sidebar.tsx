@@ -1,5 +1,5 @@
 import type React from "react"
-import { User, Users, Building2, Home, Settings } from "lucide-react"
+import { User, Users, Building2, Home, Settings,Book } from "lucide-react"
 
 export interface SidebarItem {
   title: string
@@ -24,13 +24,16 @@ export const adminsidebarConfig: SidebarItem[] = [
     title: "用户管理",
     url: "/management",
     icon: Users,
-    badge: "管理",
   },
   {
     title: "智慧城市",
     url: "/smart-city",
     icon: Building2,
-    badge: "新",
+  },
+  {
+    title: "日志查看",
+    url: "/logs",
+    icon: Book
   },
   {
     title: "设置",
