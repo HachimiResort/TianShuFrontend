@@ -970,7 +970,7 @@ export default function CityMap() {
       {/* 底部时间控制条 */}
       {selectedScene && locations.length > 0 && (
         <div className="absolute bottom-2 left-2 right-2 z-10 max-w-xl mx-auto">
-          <Card className="bg-white/60 backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out p-2 text-sm">
+          <Card className={`${theme === 'light' ? 'bg-white/20' : 'bg-black/70'} backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out p-2 text-sm"`}>
             <CardContent className="p-2 space-y-2 bg-transparent">
               {/* 时间滑块 */}
               <div className="space-y-1">
