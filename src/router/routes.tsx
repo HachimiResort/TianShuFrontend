@@ -14,6 +14,7 @@ const LocationPage = lazy(() => import("@/pages/Location"))
 const Manager = lazy(()=> import("@/pages/Manager"))
 const TestData = lazy(() => import("@/pages/test-data"))
 const SmartCity = lazy(() => import("@/pages/smart-city"))
+const LogsPage=lazy(() => import("@/pages/Logs"))
 
 // 加载状态组件
 const PageLoading = () => <div className="flex h-screen items-center justify-center">加载中...</div>
@@ -81,6 +82,15 @@ export const routes: RouteConfig[] = [
 
         meta: {
           title: "智慧城市交通",
+          requiresAuth: true,
+        },
+      },
+      {
+        path: "logs",
+        element: <LogsPage/>,
+
+        meta: {
+          title: "日志查看",
           requiresAuth: true,
         },
       },
