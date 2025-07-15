@@ -137,6 +137,7 @@ class DataCache {
     // 只存储 chunkData.start_time ~ chunkData.start_time + (chunkData.step-1)*scene.step_length 的时间步
     chunkData.measurements.forEach((locationMeasurement) => {
       locationMeasurement.flow_data.forEach((flowRecord) => {
+
         const timeStep = Math.round((flowRecord.time - scene.measurement_start_time) / scene.step_length)
         // 限定时间步范围
         const chunkStartStep = Math.round((chunkData.start_time - scene.measurement_start_time) / scene.step_length)
@@ -358,7 +359,7 @@ export default function CityMap() {
             const flow_data: FlowRecord[] = []
             for (const flow of prediction.flow_data || []) {
               flow_data.push({
-                time: rawData.start_time + (flow.current_step - 1) * rawData.step,
+                time: rawData.start_time + (flow.current_step - 1) * scene.step_length,
                 velocity_record: flow.velocity_prediction,
                 record_id: flow.current_step,
               })
@@ -371,10 +372,8 @@ export default function CityMap() {
             step: rawData.step,
             measurements,
           }
-          console.log("374:fetchData:" + data)
-          // 只存储 A ~ A+step-1 的时间步
           dataCache.current.processAndCacheData(scene,data, true)
-          console.log(data)
+
           return data
         }
         return null
@@ -464,22 +463,7 @@ export default function CityMap() {
       const data = await fetchAndProcessPredictionData(selectedScene, targetTime, 30)
       
       if (data && data.measurements && data.measurements.length > 0) {
-        // 调试：检查第一条数据的时间步计算
-        const firstMeasurement = data.measurements[0]
-        const firstFlowData = firstMeasurement.flow_data[0]
-        if (firstFlowData) {
-          const calculatedTimeStep = Math.round((firstFlowData.time - selectedScene.measurement_start_time) / selectedScene.step_length)
-          console.log('时间步计算调试:', {
-            currentTimeStep,
-            targetTime,
-            firstFlowTime: firstFlowData.time,
-            sceneStartTime: selectedScene.measurement_start_time,
-            stepLength: selectedScene.step_length,
-            calculatedTimeStep,
-            timeDiff: firstFlowData.time - selectedScene.measurement_start_time
-          })
-        }
-        
+
         // 更新时间步状态
         for (let i = 0; i < 30 && currentTimeStep + i < totalTimeSteps; i++) {
           dataCache.current.updateTimeStepStatus(currentTimeStep + i, true)
@@ -491,13 +475,6 @@ export default function CityMap() {
         
         // 立即获取并更新当前时间步的预测数据
         const stepData = dataCache.current.getDataForTimeStep(currentTimeStep)
-        console.log('预测数据处理完成:', {
-          currentTimeStep,
-          hasStepData: !!stepData,
-          hasPrediction: !!stepData?.prediction,
-          predictionSize: stepData?.prediction?.size || 0
-        })
-        
         setCurrentPredictionData(stepData?.prediction || null)
         showToast("预测数据加载成功", "success")
       } else {
@@ -589,8 +566,6 @@ export default function CityMap() {
     (newTimeStep: number) => {
       if (newTimeStep === currentTimeStep || !selectedScene) return
       setCurrentTimeStep(newTimeStep)
-      console.log('当前预测数据:', dataCache.current.getDataForTimeStep(newTimeStep)?.prediction)
-
     },
     [selectedScene, currentTimeStep],
   )
@@ -775,9 +750,6 @@ export default function CityMap() {
       };
       
     }).filter(Boolean);
-
-    console.log("This is the features: " + features)
-
     if (features.length === 0) return null;
     
     return {
