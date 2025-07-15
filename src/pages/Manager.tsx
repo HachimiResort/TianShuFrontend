@@ -53,6 +53,11 @@ interface EditUserData {
   is_admin: boolean
 }
 
+
+interface RoleData {
+  is_admin: boolean
+}
+
 // 分页配置
 const ITEMS_PER_PAGE = 10
 
@@ -82,7 +87,6 @@ export default function UsersPage() {
   // 显示提示消息
   const showToast = useCallback(
     (message: string, variant: "default" | "destructive" | "success" = "default") => {
-      console.log("Showing toast:", message, variant);
       toast({
         title: variant === "destructive" ? "错误" : variant === "success" ? "成功" : "提示",
         description: message,
@@ -105,7 +109,7 @@ export default function UsersPage() {
           const userData = response.data.message.users
 
 
-          console.log('原始 userData:', userData);
+          console.log('原始userData:', userData);
 
 
           const userIds = userData.map(user => user.user_id);
@@ -127,12 +131,12 @@ export default function UsersPage() {
 
   // 更新用户信息
   const updateUser = useCallback(
-    async (userId: number, userData: EditUserData) => {
-      console.log("userData",userData)
+    async (userId: number, userData: EditUserData, roleData: RoleData) => {
       try {
         const response = await apiService.put(`/auth/users/${userId}/updateProfile`, userData)
-        console.log("用户信息更新",response)
-        if (response.success) {
+        const roleResponse = await apiService.put(`/auth/users/${userId}/role`, roleData)
+
+        if (response.success&&roleResponse.success) {
           showToast("用户信息更新成功", "success")
           await fetchUsers() // 重新获取用户列表
           return true
@@ -216,7 +220,11 @@ export default function UsersPage() {
       return
     }
 
-    const success = await updateUser(editingUser.user_id, editFormData)
+    const roleData: RoleData = {
+      is_admin: editFormData.is_admin
+    }
+
+    const success = await updateUser(editingUser.user_id, editFormData, roleData)
     if (success) {
       setEditDialogOpen(false)
       setEditingUser(null)
