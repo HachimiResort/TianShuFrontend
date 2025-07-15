@@ -7,7 +7,13 @@ import { useTheme } from "@/components/theme-context";
 const MusicPlayer = () => {
     const musicList = [
         "/music/不再曼波.mp3",
+        "/music/哈基米AM.flac",
+        "/music/基基侠.mp3",
+        "/music/有时哈基米.mp3",
         "/music/哈基米的夏天.mp3",
+        "/music/舌尖上的哈基米.flac",
+        "/music/跳楼基.mp3",
+        "/music/进击的哈基米.mp3",
         "/music/哈雪大冒险.flac",
         "/music/梦中的哈基米.mp3"
     ];
@@ -15,13 +21,52 @@ const MusicPlayer = () => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const progressBarRef = useRef<HTMLDivElement>(null);
     const albumCoverRef = useRef<HTMLImageElement>(null);
+    const animationRef = useRef<number>(0);
+    const rotationRef = useRef<number>(0);
+    const lastUpdateTimeRef = useRef<number>(0);
 
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
-    const [isReady, setIsReady] = useState(false); // 新增：音频是否准备好
+    const [isReady, setIsReady] = useState(false);
     const { theme } = useTheme();
+
+    // 更新旋转动画
+    const updateRotation = (timestamp: number) => {
+        if (!lastUpdateTimeRef.current) {
+            lastUpdateTimeRef.current = timestamp;
+        }
+
+        const deltaTime = timestamp - lastUpdateTimeRef.current;
+        lastUpdateTimeRef.current = timestamp;
+
+        rotationRef.current = rotationRef.current + deltaTime * 0.015;
+
+        if (albumCoverRef.current) {
+            albumCoverRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
+        }
+
+        if (isPlaying) {
+            animationRef.current = requestAnimationFrame(updateRotation);
+        }
+    };
+
+    // 监听播放状态变化
+    useEffect(() => {
+        if (isPlaying) {
+            lastUpdateTimeRef.current = 0;
+            animationRef.current = requestAnimationFrame(updateRotation);
+        } else {
+            cancelAnimationFrame(animationRef.current);
+        }
+
+        return () => {
+            cancelAnimationFrame(animationRef.current);
+        };
+    }, [isPlaying]);
+
+
 
     const getSongName = (filePath: string) => {
         const fileName = filePath.split('/').pop();
@@ -31,7 +76,6 @@ const MusicPlayer = () => {
         return "";
     };
 
-    // 格式化时间（秒转 MM:SS 格式）
     const formatTime = (seconds: number) => {
         if (isNaN(seconds) || !isFinite(seconds)) return "0:00";
         const minutes = Math.floor(seconds / 60);
@@ -39,13 +83,11 @@ const MusicPlayer = () => {
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     };
 
-    // 更新播放进度
     const updateProgress = () => {
         if (audioRef.current) {
             const currentAudioTime = audioRef.current.currentTime;
             const audioDuration = audioRef.current.duration || 0;
 
-            // 确保只在时间变化时更新状态，避免不必要的渲染
             if (currentAudioTime !== currentTime) {
                 setCurrentTime(currentAudioTime);
             }
@@ -61,32 +103,26 @@ const MusicPlayer = () => {
         }
     };
 
-    // 监听currentIndex变化，更新音频源
     useEffect(() => {
         if (audioRef.current && musicList[currentIndex]) {
             setIsReady(false);
 
-            // 保存当前播放状态和时间
             const wasPlaying = isPlaying;
             const savedTime = audioRef.current.currentTime;
 
-            // 重置音频
             audioRef.current.pause();
             audioRef.current.src = musicList[currentIndex];
             audioRef.current.load();
 
             audioRef.current.onloadedmetadata = () => {
                 if (audioRef.current) {
-                    // 恢复之前的播放时间
                     if (savedTime > 0) {
                         audioRef.current.currentTime = savedTime;
                     }
 
                     setDuration(audioRef.current.duration || 0);
-
                     setIsReady(true);
 
-                    // 只有在之前是播放状态且当前仍要求播放时才继续播放
                     if (wasPlaying && isPlaying) {
                         audioRef.current.play().catch(err => {
                             console.error("播放失败:", err);
@@ -98,7 +134,6 @@ const MusicPlayer = () => {
         }
     }, [currentIndex]);
 
-    // 监听播放状态变化
     useEffect(() => {
         if (!audioRef.current || !isReady) return;
 
@@ -112,7 +147,6 @@ const MusicPlayer = () => {
         }
     }, [isPlaying, isReady]);
 
-    // 监听播放进度
     useEffect(() => {
         const audioElement = audioRef.current;
         if (!audioElement) return;
@@ -125,7 +159,6 @@ const MusicPlayer = () => {
         };
     }, []);
 
-    // 添加对ended事件的监听（自动播放下一首）
     useEffect(() => {
         const audioElement = audioRef.current;
         if (!audioElement) return;
@@ -140,13 +173,11 @@ const MusicPlayer = () => {
         };
     }, []);
 
-    // 新增：监听暂停事件
     useEffect(() => {
         const audioElement = audioRef.current;
         if (!audioElement) return;
 
         const handlePause = () => {
-            // 确保暂停时更新进度
             updateProgress();
         };
 
@@ -156,7 +187,6 @@ const MusicPlayer = () => {
         };
     }, []);
 
-    // 处理进度条点击
     const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!progressBarRef.current || !audioRef.current || !isReady) return;
 
@@ -170,14 +200,12 @@ const MusicPlayer = () => {
         updateProgress();
     };
 
-    // 播放/暂停音乐
     const togglePlay = () => {
         if (!audioRef.current || !isReady) return;
 
         setIsPlaying(prev => !prev);
     };
 
-    // 播放上一首
     const playPrevious = () => {
         if (!isReady) return;
 
@@ -185,7 +213,6 @@ const MusicPlayer = () => {
         setIsPlaying(true);
     };
 
-    // 播放下一首
     const playNext = () => {
         if (!isReady) return;
 
@@ -195,7 +222,6 @@ const MusicPlayer = () => {
 
     return (
         <div className={`w-full max-w-sm mx-auto ${theme === 'light' ? 'bg-white' : 'bg-black'} rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl group`}>
-            {/* 专辑封面区域 */}
             <div className="relative h-64 overflow-hidden flex items-center justify-center">
                 <img
                     ref={albumCoverRef}
@@ -203,12 +229,12 @@ const MusicPlayer = () => {
                     alt={getSongName(musicList[currentIndex])}
                     className="w-48 h-48 object-cover transition-transform duration-700 group-hover:scale-110"
                     style={{
-                        animation: isPlaying ? 'rotate 20s linear infinite' : 'none'
+                        transform: `rotate(${rotationRef.current}deg)`,
+                        transition: 'transform 0.3s ease-out'
                     }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
 
-                {/* 播放按钮覆盖层 */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <button
                         onClick={togglePlay}
@@ -223,14 +249,11 @@ const MusicPlayer = () => {
                 </div>
             </div>
 
-            {/* 歌曲信息和控制区域 */}
             <div className="p-5">
-                {/* 歌曲名称 */}
                 <div className="mb-4">
                     <h3 className="text-lg font-semibold text-gray-450 truncate">{getSongName(musicList[currentIndex])}</h3>
                 </div>
 
-                {/* 进度条 */}
                 <div className="mb-4">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                         <span>{formatTime(currentTime)}</span>
@@ -248,7 +271,6 @@ const MusicPlayer = () => {
                     </div>
                 </div>
 
-                {/* 控制按钮 */}
                 <div className="flex items-center justify-between">
                     <Button
                         variant="ghost"
@@ -280,17 +302,8 @@ const MusicPlayer = () => {
                     </Button>
                 </div>
 
-                {/* 隐藏的音频元素 */}
                 <audio ref={audioRef} src={musicList[currentIndex]} preload="metadata"></audio>
             </div>
-
-            {/* 添加旋转动画 */}
-            <style>{`
-        @keyframes rotate {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
         </div>
     );
 };
