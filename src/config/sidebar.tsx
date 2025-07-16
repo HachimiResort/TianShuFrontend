@@ -11,14 +11,14 @@ export interface SidebarItem {
 //管理员导航菜单
 export const adminsidebarConfig: SidebarItem[] = [
   {
-    title: "仪表盘",
-    url: "/dashboard",
-    icon: Home,
-  },
-  {
     title: "个人信息",
     url: "/profile",
     icon: User,
+  },
+  {
+    title: "仪表盘",
+    url: "/dashboard",
+    icon: Home,
   },
   {
     title: "用户管理",
@@ -37,18 +37,13 @@ export const adminsidebarConfig: SidebarItem[] = [
   },
   {
     title: "设置",
-    url: "/settings",
+    url: "/setting",
     icon: Settings,
   },
 ]
 
 //用户导航菜单
 export const usersidebarConfig: SidebarItem[] = [
-  {
-    title: "仪表盘",
-    url: "/dashboard",
-    icon: Home,
-  },
   {
     title: "个人信息",
     url: "/profile",
@@ -59,11 +54,10 @@ export const usersidebarConfig: SidebarItem[] = [
     title: "智慧城市",
     url: "/smart-city",
     icon: Building2,
-    badge: "新",
   },
   {
     title: "设置",
-    url: "/settings",
+    url: "/setting",
     icon: Settings,
   },
 ]
