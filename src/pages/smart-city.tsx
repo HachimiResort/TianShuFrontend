@@ -1100,6 +1100,7 @@ export default function SmartCity() {
 
       {/* 底部时间控制条 */}
       {selectedScene && locations.length > 0 && (
+<<<<<<< HEAD
       <div className="absolute bottom-2 left-2 right-2 z-10 max-w-xl mx-auto transition-all duration-300" data-tour="bottom-bar">
         <Card className="bg-white/60 backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out p-2 text-sm">
           <CardContent className="p-2 space-y-2 bg-transparent">
@@ -1138,6 +1139,22 @@ export default function SmartCity() {
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded" style={{ backgroundColor: "#FF0000" }}></div>
                   <span>拥堵 ({getVelocityColorMapping.minVelocity.toFixed(1)} km/h)</span>
+=======
+        <div className="absolute bottom-2 left-2 right-2 z-10 max-w-xl mx-auto">
+          <Card className={`${theme === 'light' ? 'bg-white/20' : 'bg-black/70'} backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out p-2 text-sm"`}>
+            <CardContent className="p-2 space-y-2 bg-transparent">
+              {/* 时间滑块 */}
+              <div className="space-y-1">
+                <div className="relative">
+                  <div className="h-2 rounded-full border" style={getSliderStyle()} />
+                  <Slider
+                    value={[currentTimeStep]}
+                    onValueChange={([value]) => handleTimeStepChange(value)}
+                    max={totalTimeSteps - 1}
+                    step={1}
+                    className="absolute inset-0 [&>span:first-child]:bg-transparent [&>span:first-child]:border-0"
+                  />
+>>>>>>> f3be8b3d2cac985d6d68153d969c3705f9c41ed2
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded" style={{ backgroundColor: "#00FF00" }}></div>
