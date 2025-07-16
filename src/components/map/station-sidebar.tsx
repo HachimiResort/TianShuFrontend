@@ -110,6 +110,30 @@ export function StationSidebar({
     return data
   }, [stationData, currentTimeStep, stepLength, measurementStartTime])
 
+  // 在 chartData 的 useMemo 后面添加这个计算
+  const yAxisDomain = useMemo(() => {
+    if (chartData.length === 0) return ['auto', 'auto']
+    
+    const allValues: number[] = []
+    chartData.forEach(item => {
+      if (item.measurement !== undefined) allValues.push(item.measurement)
+      if (item.prediction !== undefined) allValues.push(item.prediction)
+    })
+    
+    if (allValues.length === 0) return ['auto', 'auto']
+    
+    const min = Math.min(...allValues)
+    const max = Math.max(...allValues)
+    const range = max - min
+    
+    // 在最小值基础上减去10%的范围作为起始值
+    const yMin = min - range * 0.1
+    // 在最大值基础上加上10%的范围作为结束值
+    const yMax = max + range * 0.1
+    
+    return [yMin, yMax]
+  }, [chartData])
+
   // 计算统计数据
   const statistics = useMemo(() => {
     if (!stationData) return null
@@ -268,6 +292,7 @@ export function StationSidebar({
                             height={60}
                           />
                           <YAxis
+                            domain={yAxisDomain}
                             tick={{ fontSize: 10 }}
                             label={{
                               value: "速度 (km/h)",
@@ -383,8 +408,6 @@ export function StationSidebar({
                   </CardContent>
                 </Card>
               )}
-
-              
             </>
           )}
         </div>

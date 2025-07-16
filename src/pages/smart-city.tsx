@@ -690,7 +690,7 @@ export default function SmartCity() {
 
       manageStreamingBuffer(0, loadingControllerRef.current)
     }
-  }, [locations, manageStreamingBuffer])
+  }, [locations])
 
   // 时间步变化处理
   const handleTimeStepChange = useCallback(
