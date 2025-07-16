@@ -13,7 +13,7 @@ env:
   ALIYUN_REGISTRY: crpi-1kkkjpeehkoxqf8e.cn-shanghai.personal.cr.aliyuncs.com
   IMAGE_NAME: tianshufrontend       
   IMAGE_TAG: latest                 
-  PORT: 5173                        # 你的项目端口，Nginx 和 Docker 都会使用这个端口
+  PORT: 80
 
 # 定义一个名为 build-and-deploy 的 Job（任务）
 jobs:
