@@ -935,7 +935,21 @@ export default function SmartCity() {
 
   return (
     <>
-    <TourProvider steps={tour_steps} scrollSmooth={false}>
+    <TourProvider steps={tour_steps}
+      styles={{
+        badge: (base) => ({ ...base, background: '#ef5a3d' }),
+        // @ts-ignore
+        dot: (base, { current }) => ({
+          ...base,
+          background: current ? '#ef5a3d' : '#ccc',
+        }),
+        popover: (base) => ({
+          ...base,
+          background: '#dedede',
+          borderRadius: 10,
+        }),
+      }}
+    >
     <GuideButton />
     <div
       style={{ height: "100vh", width: "100vw", position: "fixed", top: 0, left: 0, zIndex: 0 }}
