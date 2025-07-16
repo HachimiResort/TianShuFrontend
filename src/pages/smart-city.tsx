@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+import { TourProvider, useTour } from '@reactour/tour'
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import MapReact, { Marker } from "react-map-gl/maplibre"
 import "maplibre-gl/dist/maplibre-gl.css"
@@ -9,11 +11,42 @@ import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import { apiService } from "@/services/api"
-import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp } from "lucide-react"
+import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp, ChevronLeft, Lightbulb } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import ColorLine from "@/components/map/ColorLine"
 import PredictionHeatmap from "@/components/map/PredictionHeatmap"
-import {useTheme} from "@/components/theme-context.tsx";
+import { StationSidebar } from "@/components/map/station-sidebar"
+import { useTheme } from "@/components/theme-context"
+
+
+const tour_steps = [
+  {
+    selector: '[data-tour="top-bar"]',
+    content: '顶部状态栏可以选择场景',
+  },
+  {
+    selector: '[data-tour="scene-select"]',
+    content: '点击场景选择栏，选择一个场景',
+  },
+  {
+    selector: '[data-tour="top-load-data-button"]',
+    content: '点击加载数据按钮，加载数据',
+  },
+  {
+    selector: '[data-tour="bottom-bar"]',
+    content: '拖动进度条,查看不同时间点的数据情况.',
+  },
+  {
+    selector: '[data-tour="marker-0"]',
+    content: '这是地图上的信息站点，点击可以查看该站点的数据',
+  },
+  {
+    selector: '[data-tour="tour-map"]',
+    content: '右键可以快速折叠或者展开站点信息栏',
+  },
+] 
+
+
 
 // 复用 test-data.tsx 的数据类型定义
 interface Scene {
@@ -104,13 +137,21 @@ const TIME_STEP_STATUS_COLORS = {
   [TimeStepStatus.BOTH_LOADED]: "#3fee7cff",
 }
 
-
 // 单个时间步所有地点的数据
 type PerLocationData = Map<number, FlowRecord>
 
 interface TimeStepData {
   measurement?: PerLocationData
   prediction?: PerLocationData
+}
+
+// 侧栏站点数据类型
+interface StationData {
+  location_id: number
+  location: { longitude: number; latitude: number }
+  timeRange: { start: number; end: number }
+  measurementData: FlowRecord[]
+  predictionData: FlowRecord[]
 }
 
 // 数据缓存管理类（复用 test-data.tsx 的逻辑）
@@ -193,6 +234,27 @@ class DataCache {
     return new Map(this.timeStepStatus)
   }
 
+  // 获取特定站点的所有数据
+  getStationData(locationId: number): { measurementData: FlowRecord[]; predictionData: FlowRecord[] } {
+    const measurementData: FlowRecord[] = []
+    const predictionData: FlowRecord[] = []
+
+    this.timeStepDataCache.forEach((stepData) => {
+      if (stepData.measurement?.has(locationId)) {
+        measurementData.push(stepData.measurement.get(locationId)!)
+      }
+      if (stepData.prediction?.has(locationId)) {
+        predictionData.push(stepData.prediction.get(locationId)!)
+      }
+    })
+
+    // 按时间排序
+    measurementData.sort((a, b) => a.time - b.time)
+    predictionData.sort((a, b) => a.time - b.time)
+
+    return { measurementData, predictionData }
+  }
+
   clear(): void {
     this.chunkCache.clear()
     this.timeStepDataCache.clear()
@@ -200,11 +262,24 @@ class DataCache {
   }
 }
 
+function GuideButton() {
+  const { setIsOpen } = useTour()
+  return (
+    <button
+      onClick={() => setIsOpen(true)}
+      className="fixed z-50 bottom-6 right-6 w-12 h-12 rounded-full bg-yellow-400 hover:bg-yellow-300 shadow-lg flex items-center justify-center transition-all duration-200 border-2 border-white/80"
+      style={{ boxShadow: '0 4px 16px 0 rgba(0,0,0,0.12)' }}
+      title="新手引导"
+    >
+      <Lightbulb className="w-6 h-6 text-white drop-shadow" />
+    </button>
+  )
+}
 
-export default function CityMap() {
+export default function SmartCity() {
   const { toast } = useToast()
   const dataCache = useRef(new DataCache())
-  const { theme } = useTheme();
+  const { theme } = useTheme()
 
   // 基础状态
   const [scenes, setScenes] = useState<Scene[]>([])
@@ -224,6 +299,10 @@ export default function CityMap() {
 
   // UI状态
   const [isTopBarOpen, setIsTopBarOpen] = useState(true)
+
+  // 侧栏状态
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [selectedStationData, setSelectedStationData] = useState<StationData | null>(null)
 
   // 加载状态
   const [loadingStates, setLoadingStates] = useState({
@@ -255,6 +334,37 @@ export default function CityMap() {
     },
     [toast],
   )
+
+  // 处理站点点击
+  const handleStationClick = useCallback(
+    (location: Location) => {
+      if (!selectedScene) return
+
+      const stationData = dataCache.current.getStationData(location.location_id)
+
+      const newStationData: StationData = {
+        location_id: location.location_id,
+        location: { longitude: location.longitude, latitude: location.latitude },
+        timeRange: {
+          start: selectedScene.measurement_start_time,
+          end: selectedScene.measurement_end_time,
+        },
+        measurementData: stationData.measurementData,
+        predictionData: stationData.predictionData,
+      }
+
+      setSelectedStationData(newStationData)
+      setIsSidebarOpen(true)
+      showToast(`已选择站点 ${location.location_id}`, "success")
+    },
+    [selectedScene, showToast],
+  )
+
+  // 处理右键点击切换侧栏
+  const handleRightClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsSidebarOpen((prev) => !prev)
+  }, [])
 
   // 复用 test-data.tsx 的 API 调用逻辑
   const fetchScenes = useCallback(async () => {
@@ -360,7 +470,7 @@ export default function CityMap() {
             const flow_data: FlowRecord[] = []
             for (const flow of prediction.flow_data || []) {
               flow_data.push({
-                time: rawData.start_time + (flow.current_step - 1) * rawData.step,
+                time: rawData.start_time + (flow.current_step - 1) * scene.step_length,
                 velocity_record: flow.velocity_prediction,
                 record_id: flow.current_step,
               })
@@ -373,15 +483,13 @@ export default function CityMap() {
             step: rawData.step,
             measurements,
           }
-          console.log("374:fetchData:" + data)
-          // 只存储 A ~ A+step-1 的时间步
-          dataCache.current.processAndCacheData(scene,data, true)
-          console.log(data)
+          dataCache.current.processAndCacheData(scene, data, true)
+
           return data
         }
         return null
       } catch (error) {
-        console.error('预测数据请求错误:', error)
+        console.error("预测数据请求错误:", error)
         showToast("获取预测数据失败", "destructive")
         return null
       }
@@ -464,56 +572,56 @@ export default function CityMap() {
     try {
       const targetTime = selectedScene.measurement_start_time + currentTimeStep * selectedScene.step_length
       const data = await fetchAndProcessPredictionData(selectedScene, targetTime, 30)
-      
+
       if (data && data.measurements && data.measurements.length > 0) {
-        // 调试：检查第一条数据的时间步计算
-        const firstMeasurement = data.measurements[0]
-        const firstFlowData = firstMeasurement.flow_data[0]
-        if (firstFlowData) {
-          const calculatedTimeStep = Math.round((firstFlowData.time - selectedScene.measurement_start_time) / selectedScene.step_length)
-          console.log('时间步计算调试:', {
-            currentTimeStep,
-            targetTime,
-            firstFlowTime: firstFlowData.time,
-            sceneStartTime: selectedScene.measurement_start_time,
-            stepLength: selectedScene.step_length,
-            calculatedTimeStep,
-            timeDiff: firstFlowData.time - selectedScene.measurement_start_time
-          })
-        }
-        
         // 更新时间步状态
         for (let i = 0; i < 30 && currentTimeStep + i < totalTimeSteps; i++) {
           dataCache.current.updateTimeStepStatus(currentTimeStep + i, true)
         }
-        
+
         // 强制触发状态更新
         const newTimeStepStatuses = new Map(dataCache.current.getAllTimeStepStatuses())
         setTimeStepStatuses(newTimeStepStatuses)
-        
+
         // 立即获取并更新当前时间步的预测数据
         const stepData = dataCache.current.getDataForTimeStep(currentTimeStep)
-        console.log('预测数据处理完成:', {
-          currentTimeStep,
-          hasStepData: !!stepData,
-          hasPrediction: !!stepData?.prediction,
-          predictionSize: stepData?.prediction?.size || 0
-        })
-        
         setCurrentPredictionData(stepData?.prediction || null)
+
+        // 如果侧栏打开且有选中的站点，更新侧栏数据
+        if (isSidebarOpen && selectedStationData) {
+          const updatedStationData = dataCache.current.getStationData(selectedStationData.location_id)
+          setSelectedStationData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  measurementData: updatedStationData.measurementData,
+                  predictionData: updatedStationData.predictionData,
+                }
+              : null,
+          )
+        }
+
         showToast("预测数据加载成功", "success")
       } else {
         setCurrentPredictionData(null)
         showToast("该时间段暂无预测数据", "default")
       }
     } catch (error) {
-      console.error('预测数据请求失败:', error)
+      console.error("预测数据请求失败:", error)
       setCurrentPredictionData(null)
       showToast("预测数据请求失败", "destructive")
     } finally {
       setLoadingStates((prev) => ({ ...prev, predictions: false }))
     }
-  }, [selectedScene, currentTimeStep, fetchAndProcessPredictionData, showToast, totalTimeSteps])
+  }, [
+    selectedScene,
+    currentTimeStep,
+    fetchAndProcessPredictionData,
+    showToast,
+    totalTimeSteps,
+    isSidebarOpen,
+    selectedStationData,
+  ])
 
   // 选择场景
   const handleSceneSelect = useCallback(
@@ -527,6 +635,8 @@ export default function CityMap() {
 
       setCurrentMeasurementData(null)
       setCurrentPredictionData(null)
+      setSelectedStationData(null)
+      setIsSidebarOpen(false)
       dataCache.current.clear()
       setTimeStepStatuses(new Map())
 
@@ -544,12 +654,8 @@ export default function CityMap() {
     loadingControllerRef.current.abort = true
     loadingControllerRef.current = { abort: false }
 
-    await Promise.all([
-      fetchLocations(selectedScene.scene_id),
-      fetchGraph(selectedScene.area_id),
-    ])
-
-  }, [selectedScene, fetchLocations, fetchGraph, manageStreamingBuffer, showToast])
+    await Promise.all([fetchLocations(selectedScene.scene_id), fetchGraph(selectedScene.area_id)])
+  }, [selectedScene, fetchLocations, fetchGraph, showToast])
 
   useEffect(() => {
     if (locations.length > 0 && graphEdges.length > 0) {
@@ -584,15 +690,13 @@ export default function CityMap() {
 
       manageStreamingBuffer(0, loadingControllerRef.current)
     }
-  }, [locations]);
+  }, [locations])
 
   // 时间步变化处理
   const handleTimeStepChange = useCallback(
     (newTimeStep: number) => {
       if (newTimeStep === currentTimeStep || !selectedScene) return
       setCurrentTimeStep(newTimeStep)
-      console.log('当前预测数据:', dataCache.current.getDataForTimeStep(newTimeStep)?.prediction)
-
     },
     [selectedScene, currentTimeStep],
   )
@@ -652,12 +756,12 @@ export default function CityMap() {
     const maxVelocity = Math.max(...velocities)
 
     const getColor = (velocity: number): string => {
-      if (maxVelocity === minVelocity) return "#00FF00" // 如果所有速度相同，使用绿色
+      if (maxVelocity === minVelocity) return "#05d105ff" // 如果所有速度相同，使用绿色
       const ratio = (velocity - minVelocity) / (maxVelocity - minVelocity)
       const red = Math.round(255 * (1 - ratio))
-      const green = Math.round(255 * ratio)
+      const green = Math.round(230 * ratio)
       // 返回16进制字符串
-      return `#${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}00`
+      return `#${red.toString(16).padStart(2, "0")}${green.toString(16).padStart(2, "0")}00`
     }
 
     return { minVelocity, maxVelocity, getColor }
@@ -667,21 +771,26 @@ export default function CityMap() {
   const mapMarkers = useMemo(() => {
     if (!currentMeasurementData || !locations.length) return []
 
-    return locations.map((location) => {
+    return locations.map((location,idx) => {
       const data = currentMeasurementData.get(location.location_id)
       const color = data ? getVelocityColorMapping.getColor(data.velocity_record) : "#808080"
 
       return (
         <Marker key={location.location_id} longitude={location.longitude} latitude={location.latitude}>
           <div
-            className="w-4 h-4 rounded-full border-2 border-white shadow-lg"
+            className="w-4 h-4 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-110 transition-transform"
             style={{ backgroundColor: color }}
             title={`地点 ${location.location_id}: ${data?.velocity_record.toFixed(2) || "N/A"} km/h`}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleStationClick(location)
+            }}
+            data-tour= {idx===20 ? 'marker-0' : undefined}
           />
         </Marker>
       )
     })
-  }, [currentMeasurementData, locations, getVelocityColorMapping])
+  }, [currentMeasurementData, locations, getVelocityColorMapping, handleStationClick])
 
   // 生成线条基础结构（只在坐标数据变化时重新计算）
   const lineStructures = useMemo(() => {
@@ -705,18 +814,18 @@ export default function CityMap() {
         }
       })
       .filter(Boolean) as Array<{
-        edgeKey: string
-        startVertex: number
-        endVertex: number
-        startPoint: [number, number]
-        endPoint: [number, number]
-      }>
+      edgeKey: string
+      startVertex: number
+      endVertex: number
+      startPoint: [number, number]
+      endPoint: [number, number]
+    }>
   }, [locations, graphEdges])
 
   // 计算当前时间步的颜色数据
   const currentColors = useMemo(() => {
     const colorMap = new Map<string, { startColor: string; endColor: string }>()
-    
+
     lineStructures.forEach((line) => {
       if (currentMeasurementData) {
         const startData = currentMeasurementData.get(line.startVertex)
@@ -738,10 +847,10 @@ export default function CityMap() {
   // 生成连接线（现在只在结构变化时重新创建组件）
   const mapLines = useMemo(() => {
     if (!currentMeasurementData || !locations.length || !graphEdges.length) return []
-    
+
     return lineStructures.map((line) => {
       const colors = currentColors.get(line.edgeKey) || { startColor: "#808080", endColor: "#808080" }
-      
+
       return (
         <ColorLine
           key={line.edgeKey}
@@ -754,37 +863,35 @@ export default function CityMap() {
     })
   }, [lineStructures, currentColors])
 
-
-
   // 生成预测数据的GeoJSON
-  // 在 predictionGeoJson 的 useMemo 中添加调试
   const predictionGeoJson = useMemo(() => {
-    if (!currentPredictionData || !locations.length) return null;
+    if (!currentPredictionData || !locations.length) return null
 
-    const features = locations.map((location) => {
-      const data = currentPredictionData.get(location.location_id);
-      // 只保留 velocity > 0 的点
-      if (!data || data.velocity_record <= 0) return null;
-      return {
-        type: "Feature" as const,
-        geometry: {
-          type: "Point" as const,
-          coordinates: [location.longitude, location.latitude],
-        },
-        properties: {
-          velocity: data.velocity_record,
-        },
-      };
-      
-    }).filter(Boolean);
+    const features: GeoJSON.Feature<GeoJSON.Point>[] = locations
+      .map((location) => {
+        const data = currentPredictionData.get(location.location_id)
+        // 只保留 velocity > 0 的点
+        if (!data || data.velocity_record <= 0) return null
+        return {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [location.longitude, location.latitude],
+          },
+          properties: {
+            velocity: data.velocity_record,
+          },
+        }
+      })
+      .filter(Boolean) as GeoJSON.Feature<GeoJSON.Point>[]
 
-    if (features.length === 0) return null;
-    
+    if (features.length === 0) return null
+
     return {
       type: "FeatureCollection",
       features,
-    } as GeoJSON.FeatureCollection<GeoJSON.Point>;
-  }, [currentPredictionData, locations]);
+    } as GeoJSON.FeatureCollection<GeoJSON.Point>
+  }, [currentPredictionData, locations])
 
   // 自定义Slider样式
   const getSliderStyle = useCallback(() => {
@@ -818,8 +925,37 @@ export default function CityMap() {
     }
   }, [])
 
+  const { currentStep } = useTour()
+  useEffect(() => {
+    // 假设“站点信息栏”是第5步（index 5），请根据你的 tour_steps 实际顺序调整
+    if (currentStep === 5) {
+      setIsSidebarOpen(true)
+    }
+  }, [currentStep])
+
   return (
-    <div style={{ height: "100vh", width: "100vw", position: "fixed", top: 0, left: 0, zIndex: 0 }}>
+    <>
+    <TourProvider steps={tour_steps}
+      styles={{
+        badge: (base) => ({ ...base, background: '#ef5a3d' }),
+        // @ts-ignore
+        dot: (base, { current }) => ({
+          ...base,
+          background: current ? '#ef5a3d' : '#ccc',
+        }),
+        popover: (base) => ({
+          ...base,
+          background: '#dedede',
+          borderRadius: 10,
+        }),
+      }}
+    >
+    <GuideButton />
+    <div
+      style={{ height: "100vh", width: "100vw", position: "fixed", top: 0, left: 0, zIndex: 0 }}
+      onContextMenu={handleRightClick}
+      data-tour="tour-map"
+    >
       {/* 全屏地图 */}
       <MapReact
         initialViewState={{
@@ -829,25 +965,31 @@ export default function CityMap() {
         }}
         {...viewState}
         onMove={(evt) => setViewState(evt.viewState)}
-        style={{ width: "100vw", height: "100vh", position: "absolute", top: 0, left: 0 }}
+        style={{
+          width: "100vw",
+          height: "100vh",
+          position: "absolute",
+          top: 0,
+          left: 0,
+        }}
         mapStyle="https://api.maptiler.com/maps/streets/style.json?key=AKUofKhmm1j1S5bzzZ0F"
       >
         {/* 预测热力图 */}
-        { (
-          <PredictionHeatmap
-            geojson={predictionGeoJson}
-            minVelocity={getVelocityColorMapping.minVelocity}
-            maxVelocity={getVelocityColorMapping.maxVelocity}
-          />
-        )}
+        <PredictionHeatmap
+          geojson={predictionGeoJson}
+          minVelocity={getVelocityColorMapping.minVelocity}
+          maxVelocity={getVelocityColorMapping.maxVelocity}
+        />
         {mapMarkers}
         {mapLines}
       </MapReact>
 
       {/* 顶部可折叠状态栏 */}
-      <div className="absolute top-2 left-2 right-2 z-10 max-w-xl mx-auto">
+      <div className="absolute top-2 left-2 right-2 z-10 max-w-xl mx-auto transition-all duration-300" data-tour="top-bar">  
         <Collapsible open={isTopBarOpen} onOpenChange={setIsTopBarOpen}>
-          <Card className={`${theme === 'light' ? 'bg-white/20' : 'bg-black/70'} backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out text-sm p-2"`}>
+          <Card
+            className={`${theme === "light" ? "bg-white/20" : "bg-black/70"} backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out text-sm p-2`}
+          >
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-2">
                 <div className="flex items-center justify-between">
@@ -860,7 +1002,8 @@ export default function CityMap() {
                 </div>
                 {selectedScene && (
                   <CardDescription className="text-xs">
-                    当前场景: {selectedScene.name} | 时间: {formatTimestamp(getCurrentTimestamp())} | 步骤: {currentTimeStep + 1} / {totalTimeSteps}
+                    当前场景: {selectedScene.name} | 时间: {formatTimestamp(getCurrentTimestamp())} | 步骤:{" "}
+                    {currentTimeStep + 1} / {totalTimeSteps}
                   </CardDescription>
                 )}
               </CardHeader>
@@ -871,7 +1014,7 @@ export default function CityMap() {
                 {/* 场景选择 */}
                 <div className="space-y-1">
                   <h3 className="text-xs font-medium">选择场景</h3>
-                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3" data-tour="scene-select">
                     {scenes.map((scene) => (
                       <Card
                         key={scene.scene_id}
@@ -914,6 +1057,7 @@ export default function CityMap() {
                       disabled={loadingStates.locations || loadingStates.graph}
                       size="sm"
                       className="text-xs px-2 py-1"
+                      data-tour="top-load-data-button"
                     >
                       {(loadingStates.locations || loadingStates.graph) && (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -926,7 +1070,7 @@ export default function CityMap() {
                       variant="outline"
                       size="sm"
                       disabled={loadingStates.predictions || !locations.length}
-                      className="text-xs px-2 py-1"
+                      className="text-xs px-2 py-1 bg-transparent"
                     >
                       {loadingStates.predictions ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -955,7 +1099,8 @@ export default function CityMap() {
                     </div>
                     <div>
                       <div className="text-base font-bold text-primary">
-                        {getVelocityColorMapping.minVelocity.toFixed(1)} - {getVelocityColorMapping.maxVelocity.toFixed(1)}
+                        {getVelocityColorMapping.minVelocity.toFixed(1)} -{" "}
+                        {getVelocityColorMapping.maxVelocity.toFixed(1)}
                       </div>
                       <div className="text-xs text-muted-foreground">速度范围 (km/h)</div>
                     </div>
@@ -969,50 +1114,82 @@ export default function CityMap() {
 
       {/* 底部时间控制条 */}
       {selectedScene && locations.length > 0 && (
-        <div className="absolute bottom-2 left-2 right-2 z-10 max-w-xl mx-auto">
-          <Card className={`${theme === 'light' ? 'bg-white/20' : 'bg-black/70'} backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out p-2 text-sm"`}>
-            <CardContent className="p-2 space-y-2 bg-transparent">
-              {/* 时间滑块 */}
-              <div className="space-y-1">
-                <div className="relative">
-                  <div className="h-2 rounded-full border" style={getSliderStyle()} />
-                  <Slider
-                    value={[currentTimeStep]}
-                    onValueChange={([value]) => handleTimeStepChange(value)}
-                    max={totalTimeSteps - 1}
-                    step={1}
-                    className="absolute inset-0 [&>span:first-child]:bg-transparent [&>span:first-child]:border-0"
-                  />
+      <div className="absolute bottom-2 left-2 right-2 z-10 max-w-xl mx-auto transition-all duration-300" data-tour="bottom-bar">
+        <Card className="bg-white/60 backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out p-2 text-sm">
+          <CardContent className="p-2 space-y-2 bg-transparent">
+            {/* 时间滑块 */}
+            <div className="space-y-1">
+              <div className="relative">
+                <div className="h-2 rounded-full border" style={getSliderStyle()} />
+                <Slider
+                  value={[currentTimeStep]}
+                  onValueChange={([value]) => handleTimeStepChange(value)}
+                  max={totalTimeSteps - 1}
+                  step={1}
+                  className="absolute inset-0 [&>span:first-child]:bg-transparent [&>span:first-child]:border-0"
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{selectedScene && formatTimestamp(selectedScene.measurement_start_time)}</span>
+                <span>{selectedScene && formatTimestamp(selectedScene.measurement_end_time)}</span>
+              </div>
+            </div>
+
+            {/* 控制按钮和图例 */}
+            <div className="flex items-center justify-between">
+              <Button
+                onClick={handlePlayPause}
+                variant="outline"
+                size="sm"
+                className="bg-transparent text-xs px-2 py-1"
+              >
+                {isPlaying ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                {isPlaying ? "暂停" : "播放"}
+              </Button>
+
+              {/* 颜色图例 */}
+              <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded" style={{ backgroundColor: "#FF0000" }}></div>
+                  <span>拥堵 ({getVelocityColorMapping.minVelocity.toFixed(1)} km/h)</span>
                 </div>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{selectedScene && formatTimestamp(selectedScene.measurement_start_time)}</span>
-                  <span>{selectedScene && formatTimestamp(selectedScene.measurement_end_time)}</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded" style={{ backgroundColor: "#00FF00" }}></div>
+                  <span>通畅 ({getVelocityColorMapping.maxVelocity.toFixed(1)} km/h)</span>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>)}
 
-              {/* 控制按钮和图例 */}
-              <div className="flex items-center justify-between">
-                <Button onClick={handlePlayPause} variant="outline" size="sm" className="bg-transparent text-xs px-2 py-1">
-                  {isPlaying ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-                  {isPlaying ? "暂停" : "播放"}
-                </Button>
-
-                {/* 颜色图例 */}
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded" style={{ backgroundColor: "#FF0000" }}></div>
-                    <span>拥堵 ({getVelocityColorMapping.minVelocity.toFixed(1)} km/h)</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded" style={{ backgroundColor: "#00FF00" }}></div>
-                    <span>通畅 ({getVelocityColorMapping.maxVelocity.toFixed(1)} km/h)</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      {/* 侧栏收缩状态的展开按钮 */}
+      {!isSidebarOpen && (
+        <div className="fixed top-1/2 right-2 z-30 transform -translate-y-1/2">
+          <Button
+            onClick={() => setIsSidebarOpen(true)}
+            size="sm"
+            className="h-12 w-8 rounded-l-lg rounded-r-none bg-background/90 backdrop-blur-sm border shadow-lg hover:bg-background/95 transition-all duration-300"
+            title="展开站点详情"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
         </div>
       )}
+
+      {/* 右侧站点详情侧栏 */}
+
+      <StationSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        stationData={selectedStationData}
+        currentTimeStep={currentTimeStep}
+        stepLength={selectedScene?.step_length || 300}
+        measurementStartTime={selectedScene?.measurement_start_time || 0}
+      />
+
     </div>
+    </TourProvider>
+    </>
   )
 }
