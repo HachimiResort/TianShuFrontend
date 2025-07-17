@@ -13,6 +13,19 @@ import type {ApiResponse, UserInfoResponse} from "@/types";
 import {apiService} from "@/services/api.ts";
 import {toast} from "@/components/ui/use-toast.tsx";
 
+
+const formatDate = (timestamp: number) => {
+  const date = new Date(timestamp * 1000); // 假设时间戳是秒级别的，乘以 1000 转换为毫秒
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
 export default function Profile() {
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
@@ -54,7 +67,7 @@ export default function Profile() {
         role: userInfo.message.user.is_admin ? "admin" : "user",
         avatar: "/placeholder.svg?height=100&width=100",
         joinDate: "",
-        lastLogin: ""
+        lastLogin: formatDate(userInfo.message.user.last_login_time)
       })
 
       setLoading(false)
@@ -196,8 +209,7 @@ export default function Profile() {
               {getRoleBadge(formData.role)}
               <Separator className="transition-colors duration-300" />
               <div className="space-y-2 text-sm text-muted-foreground transition-colors duration-300">
-                <p>加入时间: {formData.joinDate}</p>
-                <p>最后登录: {formData.lastLogin}</p>
+                <p>登录时间: {formData.lastLogin}</p>
               </div>
             </CardContent>
           </Card>

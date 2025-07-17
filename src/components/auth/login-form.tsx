@@ -58,7 +58,7 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         duration: 2000,
       })
       // 登陆成功页面跳转
-      navigate("/dashboard")
+      navigate("/profile")
     } else {
 
       toast({

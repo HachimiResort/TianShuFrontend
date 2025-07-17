@@ -74,16 +74,14 @@ export const AppRouter = () => {
     );
 
     // 路由守卫逻辑
+
     if (currentRoute?.meta?.requiresAuth && !isAuthenticated()) {
-      //console.log("[路由守卫] 未认证，重定向到登录页");
       navigate("/login", {
         replace: true,
         state: { message: "请先登录！", variant: "destructive" }
       });
 
 
-    } else {
-      //console.log("[路由守卫] 允许访问:", location.pathname);
     }
   }, [location, navigate]);
 

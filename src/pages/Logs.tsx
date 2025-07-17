@@ -95,14 +95,12 @@ export default function LogsPage() {
             if (end_time) {
                 urlParams += `&end_time=${format(end_time, "yyyy-MM-dd HH:mm:ss")}`;
             }
-            console.log(`/auth/user-logs?${urlParams}`);
 
             const response = await apiService.get<LogsApiResponse>(
                 `/auth/user-logs?${urlParams}`
             );
 
             if (response.success && response.data) {
-                console.log("response", response);
                 if (response.data.code === 0) {
                     const logData = response.data.message.logs;
                     setLogs(logData);
@@ -142,18 +140,9 @@ export default function LogsPage() {
 
     // 监听currentPage变化，重新获取数据
     useEffect(() => {
-        console.log("currentPage发生变化：", currentPage, "执行fetchLogs");
         fetchLogs(); // 监听 currentPage 变化，触发数据请求
     }, [currentPage]);
 
-    useEffect(() => {
-        console.log("状态变化检测:");
-        console.log("logs:", logs);
-        console.log("totalPages:", totalPages);
-        console.log("totalRecords:", totalRecords);
-        console.log("currentPage:", currentPage);
-        console.log("pageSize:", pageSize);
-    }, [logs, totalPages, totalRecords, currentPage]);
 
     return (
         <div className="p-6 space-y-6 animate-in fade-in-0 duration-500">
