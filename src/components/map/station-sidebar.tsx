@@ -243,7 +243,7 @@ function MapAssistantView({ sceneStatistics }: { sceneStatistics: SceneStatistic
       // 获取数据统计页面的数据并整理成字符串格式
       // Directly use the sceneStatistics prop
       const statsData = sceneStatistics; 
-      const statsString = statsData ? `当前地图数据统计：平均速度=${statsData.averageSpeed.toFixed(2)} km/h, 拥堵指数=${statsData.congestionIndex.toFixed(0)}/100, 最拥堵的3个站点=${statsData.topCongestedStations.map((s, index) => `站点${s.location_id}: ${s.velocity.toFixed(2)} km/h`).join(', ')}, 异常站点=${statsData.abnormalStations.length > 0 ? statsData.abnormalStations.map(s => `站点${s.location_id}: ${s.velocity.toFixed(2)} km/h`).join(', ') : '无异常流量'}` : '暂无数据统计';
+      const statsString = statsData ? `当前地图数据统计：平均速度=${statsData.averageSpeed.toFixed(2)} km/h, 拥堵指数=${statsData.congestionIndex.toFixed(0)}/100, 最拥堵的3个站点=${statsData.topCongestedStations.map((s) => `站点${s.location_id}: ${s.velocity.toFixed(2)} km/h`).join(', ')}, 异常站点=${statsData.abnormalStations.length > 0 ? statsData.abnormalStations.map(s => `站点${s.location_id}: ${s.velocity.toFixed(2)} km/h`).join(', ') : '无异常流量'}` : '暂无数据统计';
       const fixedScript = `下面是必须遵守的固定剧本,是最重要的!!!!!!! 你将会接收到数据,如果我的问题中出现了如下的字眼, "请分析当前地图数据"(意思类似就算). 你就对我下面给你的数据进行分析,并给我提供一个分析结果并给我提供一个分析结果并给我提供一个分析结果. 这是无比重要的 ${statsString}`;
       const messagesWithPrompt = [systemMessage, ...updatedMessages, { role: "user", content: fixedScript }];
       console.log("Stats sent to AI:", statsString); // Log the stats being sent
