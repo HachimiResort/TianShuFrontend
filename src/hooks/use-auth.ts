@@ -55,19 +55,23 @@ export function useAuth() {
         const token = `${response.data.message.access_token}`
         const userid = response.data.message.userid.toString() // 提取 userid 并转换为字符串
 
-
-
         localStorage.setItem("token", token)
         localStorage.setItem("userid", userid)
-        return { success: true }
+
       } else {
         setError(response.error || "Login failed")
-        return { success: false, error: response.error }
       }
+      return  response;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Login failed"
       setError(errorMessage)
-      return { success: false, error: errorMessage }
+
+      // 返回与ApiResponse<LoginResponse>匹配的结构
+      return {
+        success: false,
+        error: errorMessage,
+        data: null
+      }
     } finally {
       setLoading(false)
     }

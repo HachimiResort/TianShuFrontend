@@ -22,14 +22,16 @@ class ApiService {
       'Authorization': `Bearer ${localStorage.getItem("token")}` || "",
     }
 
+    const mergedOptions: RequestInit = {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
+    }
+
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          ...defaultHeaders,
-          ...options.headers,
-        },
-      })
+      const response = await fetch(url, mergedOptions)
 
       // 处理 204 No Content 或其他无返回体的成功响应
       if (response.status === 204 || response.headers.get("content-length") === "0") {
