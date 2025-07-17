@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import { apiService } from "@/services/api"
-import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp, ChevronLeft, Lightbulb } from "lucide-react"
+import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp, ChevronLeft, Lightbulb, Eye, EyeOff } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import ColorLine from "@/components/map/ColorLine"
 import PredictionHeatmap from "@/components/map/PredictionHeatmap"
@@ -668,24 +668,33 @@ export default function SmartCity() {
   // 选择场景
   const handleSceneSelect = useCallback(
     (scene: Scene) => {
-      loadingControllerRef.current.abort = true
-      setSelectedScene(scene)
-      setCurrentTimeStep(0)
+      // 如果点击的是当前已选场景，不做任何操作
+      if (selectedScene?.scene_id === scene.scene_id) {
+        showToast(`已经是当前场景: ${scene.name}`, "default");
+        return;
+      }
 
-      const steps = Math.floor((scene.measurement_end_time - scene.measurement_start_time) / scene.step_length)
-      setTotalTimeSteps(steps)
+      loadingControllerRef.current.abort = true;
+      setSelectedScene(scene);
+      setCurrentTimeStep(0);
 
-      setCurrentMeasurementData(null)
-      setCurrentPredictionData(null)
-      setSelectedStationData(null)
-      setIsSidebarOpen(false)
-      dataCache.current.clear()
-      setTimeStepStatuses(new Map())
+      const steps = Math.floor((scene.measurement_end_time - scene.measurement_start_time) / scene.step_length);
+      setTotalTimeSteps(steps);
 
-      showToast(`已选择场景: ${scene.name}`, "success")
+      // 清除所有相关数据
+      setCurrentMeasurementData(null);
+      setCurrentPredictionData(null);
+      setSelectedStationData(null);
+      setIsSidebarOpen(false);
+      dataCache.current.clear();
+      setTimeStepStatuses(new Map());
+      setTrafficLights([]);
+      setCurrentTrafficLightStatuses(new Map());
+
+      showToast(`已选择场景: ${scene.name}`, "success");
     },
-    [showToast],
-  )
+    [selectedScene, showToast],  // 添加 selectedScene 到依赖数组
+  );
 
   // 加载数据
   const handleLoadData = useCallback(async () => {
@@ -816,6 +825,7 @@ export default function SmartCity() {
   }, [currentMeasurementData])
 
   // 在 SmartCity 组件中添加状态
+  const [showTrafficLights, setShowTrafficLights] = useState(true); // 新增状态控制红绿灯显示
   const [hoveredMarker, setHoveredMarker] = useState<{
     location: Location;
     velocity: number;
@@ -1149,7 +1159,7 @@ export default function SmartCity() {
           minVelocity={getVelocityColorMapping.minVelocity}
           maxVelocity={getVelocityColorMapping.maxVelocity}
         />
-        {trafficLightMarkers}
+        {showTrafficLights && trafficLightMarkers}
         {mapMarkers}
         {mapLines}
 
@@ -1362,21 +1372,24 @@ export default function SmartCity() {
         </Card>
       </div>)}
 
-      {/* 侧栏收缩状态的展开按钮 */}
-      {!isSidebarOpen && (
-        <div className="fixed top-1/2 right-2 z-30 transform -translate-y-1/2">
-          <Button
-            onClick={() => setIsSidebarOpen(true)}
-            size="sm"
-            className="h-12 w-8 rounded-l-lg rounded-r-none bg-background/90 backdrop-blur-sm border shadow-lg hover:bg-background/95 transition-all duration-300"
-            title="展开站点详情"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
+      {/* 右下角控制按钮组 */}
+      <div className="fixed bottom-6 right-20 z-50 flex flex-col gap-2">
+        <Button
+          onClick={() => setShowTrafficLights(!showTrafficLights)}
+          size="sm"
+          variant={showTrafficLights ? "default" : "outline"}
+          className="shadow-lg w-12 h-12 rounded-full p-0 flex items-center justify-center"
+          title={showTrafficLights ? "隐藏红绿灯" : "显示红绿灯"}
+        >
+          {showTrafficLights ? (
+            <EyeOff className="w-5 h-5" />
+          ) : (
+            <Eye className="w-5 h-5" />
+          )}
+        </Button>
+      </div>
 
-      {/* 右侧站点详情侧栏 */}
+      {/* 左侧站点详情侧栏 */}
 
       <StationSidebar
         isOpen={isSidebarOpen}
