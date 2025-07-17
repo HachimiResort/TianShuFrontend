@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import { apiService } from "@/services/api"
-import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp, Lightbulb, Eye, EyeOff } from "lucide-react"
+import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp, Lightbulb, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import ColorLine from "@/components/map/ColorLine"
 import PredictionHeatmap from "@/components/map/PredictionHeatmap"
@@ -801,20 +801,34 @@ export default function SmartCity() {
   }, [selectedScene, currentTimeStep])
 
   // 计算速度颜色映射
+  // 计算速度颜色映射
   const getVelocityColorMapping = useMemo(() => {
     if (!currentMeasurementData || currentMeasurementData.size === 0) {
       return { minVelocity: 0, maxVelocity: 100, getColor: () => "#808080" }
     }
 
-    // 过滤掉0值，最小值取非零最小
-    const velocities = Array.from(currentMeasurementData.values()).map((record) => record.velocity_record)
-    const nonZeroVelocities = velocities.filter((v) => v > 0)
-    const minVelocity = nonZeroVelocities.length > 0 ? Math.min(...nonZeroVelocities) : 0
+    // --- 开始修改 ---
+    // 直接在这里过滤掉速度为0的记录
+    const velocities = Array.from(currentMeasurementData.values())
+      .map((record) => record.velocity_record)
+      .filter(v => v > 0);
+    // --- 结束修改 ---
+
+    if (velocities.length === 0) {
+        return { minVelocity: 0, maxVelocity: 100, getColor: () => "#808080" }
+    }
+
+    const minVelocity = Math.min(...velocities)
     const maxVelocity = Math.max(...velocities)
 
     const getColor = (velocity: number): string => {
+      if (velocity <= 0) return "#808080"; // 为0或负数时直接返回灰色
       if (maxVelocity === minVelocity) return "#05d105ff" // 如果所有速度相同，使用绿色
-      const ratio = (velocity - minVelocity) / (maxVelocity - minVelocity)
+      
+      // 将速度限制在 min/max 范围内进行计算, 避免超出范围
+      const clampedVelocity = Math.max(minVelocity, Math.min(velocity, maxVelocity));
+      const ratio = (clampedVelocity - minVelocity) / (maxVelocity - minVelocity)
+      
       const red = Math.round(255 * (1 - ratio))
       const green = Math.round(230 * ratio)
       // 返回16进制字符串
@@ -834,7 +848,7 @@ export default function SmartCity() {
   // 计算拥挤程度并返回等级和颜色
   const calculateCongestionLevel = useCallback(
     (velocity: number) => {
-      if (!currentMeasurementData || currentMeasurementData.size === 0) {
+      if (!currentMeasurementData || currentMeasurementData.size === 0 || velocity <= 0) {
         return { level: "N/A", color: "#808080" };
       }
       const { minVelocity, maxVelocity } = getVelocityColorMapping;
@@ -1159,7 +1173,7 @@ export default function SmartCity() {
           minVelocity={getVelocityColorMapping.minVelocity}
           maxVelocity={getVelocityColorMapping.maxVelocity}
         />
-        
+
         {mapMarkers}
         {showTrafficLights && trafficLightMarkers}
         {mapLines}
@@ -1400,16 +1414,46 @@ export default function SmartCity() {
 
       
 
-      {/* 左侧站点详情侧栏 */}
+      {/* 右侧站点详情侧栏 */}
+      <div className="fixed right-0 top-0 h-full z-20 flex">
+        {/* 直接渲染StationSidebar组件 */}
+        {isSidebarOpen && (
+          <StationSidebar
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+            stationData={selectedStationData}
+            currentTimeStep={currentTimeStep}
+            stepLength={selectedScene?.step_length || 300}
+            measurementStartTime={selectedScene?.measurement_start_time || 0}
+            // -- 添加以下两个 props --
+            allLocations={locations}
+            currentMeasurementData={currentMeasurementData}
+          />
+        )}
 
-      <StationSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        stationData={selectedStationData}
-        currentTimeStep={currentTimeStep}
-        stepLength={selectedScene?.step_length || 300}
-        measurementStartTime={selectedScene?.measurement_start_time || 0}
-      />
+        {/* 只在折叠时显示展开按钮 */}
+        {!isSidebarOpen && (
+          <Button
+            onClick={() => setIsSidebarOpen(true)}
+            size="sm"
+            variant="ghost"
+            className="h-full w-6 rounded-l-lg rounded-r-none bg-background border shadow-lg hover:bg-background self-center ml-1"
+            title="展开侧栏"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* 折叠状态下的边缘显示 */}
+      {!isSidebarOpen && (
+        <div 
+          className="fixed right-0 top-0 h-full w-1 bg-foreground/10 z-20"
+          style={{
+            boxShadow: '2px 0 4px rgba(0,0,0,0.05)'
+          }}
+        />
+      )}
 
     </div>
     </TourProvider>
