@@ -15,6 +15,7 @@ const Manager = lazy(()=> import("@/pages/Manager"))
 const TestData = lazy(() => import("@/pages/test-data"))
 const SmartCity = lazy(() => import("@/pages/smart-city"))
 const LogsPage=lazy(() => import("@/pages/Logs"))
+const Setting=lazy(() => import("@/pages/setting"))
 
 // 加载状态组件
 const PageLoading = () => <div className="flex h-screen items-center justify-center">加载中...</div>
@@ -35,27 +36,15 @@ export interface RouteConfig {
 export const routes: RouteConfig[] = [
   {
     path: "/",
-    element: <Navigate to="/dashboard" replace />,
+    element: <Navigate to="/profile" replace />,
     meta: {
       requiresAuth: true,
     },
   },
   {
     path: "/",
-    element: <DashboardLayout />, // Updated element
+    element: <DashboardLayout />,
     children: [
-      {
-        path: "dashboard",
-        element: (
-          <Suspense fallback={<PageLoading />}>
-            <Dashboard />
-          </Suspense>
-        ),
-        meta: {
-          title: "仪表盘",
-          requiresAuth: true,
-        },
-      },
       {
         path: "profile",
         element: (
@@ -65,6 +54,18 @@ export const routes: RouteConfig[] = [
         ),
         meta: {
           title: "个人资料",
+          requiresAuth: true,
+        },
+      },
+      {
+        path: "dashboard",
+        element: (
+            <Suspense fallback={<PageLoading />}>
+              <Dashboard />
+            </Suspense>
+        ),
+        meta: {
+          title: "仪表盘",
           requiresAuth: true,
         },
       },
@@ -91,6 +92,15 @@ export const routes: RouteConfig[] = [
 
         meta: {
           title: "日志查看",
+          requiresAuth: true,
+        },
+      },
+      {
+        path: "setting",
+        element: <Setting/>,
+
+        meta: {
+          title: "设置",
           requiresAuth: true,
         },
       },
