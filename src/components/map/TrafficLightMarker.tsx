@@ -1,5 +1,4 @@
-import { Marker, Popup } from "react-map-gl/maplibre";
-import { useState } from "react";
+import { Marker } from "react-map-gl/maplibre";
 
 interface TrafficLightMarkerProps {
   id: string;
@@ -16,8 +15,6 @@ export function TrafficLightMarker({
   isGreen,
   size = 24,
 }: TrafficLightMarkerProps) {
-  const [showPopup, setShowPopup] = useState(false);
-
   // 增强版红绿灯SVG（金属质感+发光效果）
   const TrafficLightIcon = () => (
     <svg width={size} height={size * 1.5} viewBox="0 0 40 60">
@@ -57,62 +54,17 @@ export function TrafficLightMarker({
   );
 
   return (
-    <>
-      <Marker longitude={longitude} latitude={latitude} anchor="bottom">
-        <div 
-          style={{ 
-            cursor: "pointer", 
-            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))",
-            transition: "transform 0.2s",
-            transform: "translateY(-2px)"
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowPopup(v => !v);
-          }}
-          onMouseEnter={() => setShowPopup(true)}
-          onMouseLeave={() => setShowPopup(false)}
-        >
-          <TrafficLightIcon />
-        </div>
-      </Marker>
-
-      {showPopup && (
-        <Popup
-          longitude={longitude}
-          latitude={latitude}
-          closeButton={false}
-          closeOnClick={false}
-          anchor="bottom"
-          offset={10}
-          className="text-sm" // 使用smart-city的简洁背景样式
-        >
-          <div style={{ minWidth: "200px" }}>
-            <h4 style={{ 
-              margin: "0 0 8px", 
-              fontSize: "16px", 
-              display: "flex", 
-              alignItems: "center" 
-            }}>
-              <span style={{ 
-                display: "inline-block",
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                background: isGreen ? "#0f0" : "#f00",
-                marginRight: "8px",
-                boxShadow: `0 0 8px ${isGreen ? "#0f0" : "#f00"}`
-              }} />
-              红绿灯 #{id}
-            </h4>
-            <div style={{ fontSize: "14px", lineHeight: "1.5" }}>
-              <div><strong>状态：</strong>{isGreen ? "绿灯通行 🟢" : "红灯停止 🔴"}</div>
-              <div><strong>经度：</strong>{longitude.toFixed(6)}</div>
-              <div><strong>纬度：</strong>{latitude.toFixed(6)}</div>
-            </div>
-          </div>
-        </Popup>
-      )}
-    </>
+    <Marker longitude={longitude} latitude={latitude} anchor="bottom">
+      <div 
+        style={{ 
+          cursor: "pointer", 
+          filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))",
+          transition: "transform 0.2s",
+          transform: "translateY(-2px)"
+        }}
+      >
+        <TrafficLightIcon />
+      </div>
+    </Marker>
   );
 }

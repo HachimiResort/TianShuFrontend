@@ -17,6 +17,7 @@ import ColorLine from "@/components/map/ColorLine"
 import PredictionHeatmap from "@/components/map/PredictionHeatmap"
 import { StationSidebar } from "@/components/map/station-sidebar"
 import { useTheme } from "@/components/theme-context"
+import { TrafficLightMarker } from "@/components/map/TrafficLightMarker"
 
 
 const tour_steps = [
@@ -296,6 +297,8 @@ export default function SmartCity() {
   // 数据状态
   const [currentMeasurementData, setCurrentMeasurementData] = useState<PerLocationData | null>(null)
   const [currentPredictionData, setCurrentPredictionData] = useState<PerLocationData | null>(null)
+  const [trafficLights, setTrafficLights] = useState<any[]>([])
+  const [currentTrafficLightStatuses, setCurrentTrafficLightStatuses] = useState<Map<number, boolean>>(new Map())
 
   // UI状态
   const [isTopBarOpen, setIsTopBarOpen] = useState(true)
@@ -311,6 +314,7 @@ export default function SmartCity() {
     graph: false,
     predictions: false,
     backgroundLoading: false,
+    trafficLights: false,
   })
 
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -498,6 +502,43 @@ export default function SmartCity() {
     [showToast],
   )
 
+  // 添加获取红绿灯数据的函数
+  const fetchTrafficLights = useCallback(async (sceneId: number, startTime: number, step: number) => {
+    setLoadingStates((prev) => ({ ...prev, trafficLights: true }));
+    try {
+      const response = await apiService.get<any>(`/traffic/scenes/${sceneId}/traffic-lights/traffic-statuses?time=${startTime}&step=${step}`);
+      if (response.success && response.data?.code === 0) {
+        setTrafficLights(response.data.message.history);
+        updateTrafficLightStatuses(response.data.message.history, 0);
+        showToast(`成功加载 ${response.data.message.history.length} 个红绿灯组`, "success");
+        return response.data.message.history;
+      } else {
+        showToast("获取红绿灯信息失败", "destructive");
+        return [];
+      }
+    } catch (error) {
+      showToast("获取红绿灯信息失败", "destructive");
+      return [];
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, trafficLights: false }));
+    }
+  }, [showToast]);
+
+  // 更新红绿灯状态
+  const updateTrafficLightStatuses = useCallback((trafficLightsData: any[], timeStep: number) => {
+    const statusMap = new Map<number, boolean>();
+    trafficLightsData.forEach(light => {
+      const statusHistory = light.status_history.find((status: any) => status.current_step === timeStep);
+      if (statusHistory) {
+        statusMap.set(light.light_id * 10 + 1, statusHistory.status === 1); // N
+        statusMap.set(light.light_id * 10 + 3, statusHistory.status === 1); // S
+        statusMap.set(light.light_id * 10 + 2, statusHistory.status !== 1); // E
+        statusMap.set(light.light_id * 10 + 4, statusHistory.status !== 1); // W
+      }
+    });
+    setCurrentTrafficLightStatuses(statusMap);
+  }, []);
+
   // 后台数据加载逻辑
   const manageStreamingBuffer = useCallback(
     async (cursorTimeStep: number, controller: { abort: boolean }) => {
@@ -656,8 +697,12 @@ export default function SmartCity() {
     loadingControllerRef.current.abort = true
     loadingControllerRef.current = { abort: false }
 
-    await Promise.all([fetchLocations(selectedScene.scene_id), fetchGraph(selectedScene.area_id)])
-  }, [selectedScene, fetchLocations, fetchGraph, showToast])
+    await Promise.all([
+      fetchLocations(selectedScene.scene_id),
+      fetchGraph(selectedScene.area_id),
+      fetchTrafficLights(selectedScene.scene_id, selectedScene.measurement_start_time, totalTimeSteps)
+    ])
+  }, [selectedScene, fetchLocations, fetchGraph, showToast, totalTimeSteps]);
 
   useEffect(() => {
     if (locations.length > 0 && graphEdges.length > 0) {
@@ -709,7 +754,8 @@ export default function SmartCity() {
     const dataForStep = dataCache.current.getDataForTimeStep(currentTimeStep)
     setCurrentMeasurementData(dataForStep?.measurement ?? null)
     setCurrentPredictionData(dataForStep?.prediction ?? null)
-  }, [currentTimeStep, selectedScene, timeStepStatuses])
+    updateTrafficLightStatuses(trafficLights, currentTimeStep);
+  }, [currentTimeStep, selectedScene, timeStepStatuses, trafficLights]);
 
   // 播放控制
   const handlePlayPause = useCallback(() => {
@@ -939,6 +985,83 @@ export default function SmartCity() {
     } as GeoJSON.FeatureCollection<GeoJSON.Point>
   }, [currentPredictionData, locations])
 
+  // 生成红绿灯标记
+  const trafficLightMarkers = useMemo(() => {
+    if (!trafficLights.length) return [];
+
+    const markers: React.ReactNode[] = [];
+    trafficLights.forEach(light => {
+      const coords = light.coordinates;
+      const lightId = light.light_id;
+      
+      // N direction
+      if (coords.N_latitude && coords.N_longitude) {
+        const lat = parseFloat(coords.N_latitude);
+        const lon = parseFloat(coords.N_longitude);
+        const isGreen = currentTrafficLightStatuses.get(lightId * 10 + 1) || false;
+        markers.push(
+          <TrafficLightMarker 
+            key={`${lightId}-N`}
+            id={`${lightId}-N`}
+            longitude={lon}
+            latitude={lat}
+            isGreen={isGreen}
+          />
+        );
+      }
+      
+      // E direction
+      if (coords.E_latitude && coords.E_longitude) {
+        const lat = parseFloat(coords.E_latitude);
+        const lon = parseFloat(coords.E_longitude);
+        const isGreen = currentTrafficLightStatuses.get(lightId * 10 + 2) || false;
+        markers.push(
+          <TrafficLightMarker 
+            key={`${lightId}-E`}
+            id={`${lightId}-E`}
+            longitude={lon}
+            latitude={lat}
+            isGreen={isGreen}
+          />
+        );
+      }
+      
+      // S direction
+      if (coords.S_latitude && coords.S_longitude) {
+        const lat = parseFloat(coords.S_latitude);
+        const lon = parseFloat(coords.S_longitude);
+        const isGreen = currentTrafficLightStatuses.get(lightId * 10 + 3) || false;
+        markers.push(
+          <TrafficLightMarker 
+            key={`${lightId}-S`}
+            id={`${lightId}-S`}
+            longitude={lon}
+            latitude={lat}
+            isGreen={isGreen}
+          />
+        );
+      }
+      
+      // W direction
+      if (coords.W_latitude && coords.W_longitude) {
+        const lat = parseFloat(coords.W_latitude);
+        const lon = parseFloat(coords.W_longitude);
+        const isGreen = currentTrafficLightStatuses.get(lightId * 10 + 4) || false;
+        markers.push(
+          <TrafficLightMarker 
+            key={`${lightId}-W`}
+            id={`${lightId}-W`}
+            longitude={lon}
+            latitude={lat}
+            isGreen={isGreen}
+          />
+        );
+      }
+    });
+    
+    return markers;
+  }, [trafficLights, currentTrafficLightStatuses]);
+
   // 自定义Slider样式
   const getSliderStyle = useCallback(() => {
     if (!selectedScene || totalTimeSteps === 0) return {}
@@ -1026,6 +1149,7 @@ export default function SmartCity() {
           minVelocity={getVelocityColorMapping.minVelocity}
           maxVelocity={getVelocityColorMapping.maxVelocity}
         />
+        {trafficLightMarkers}
         {mapMarkers}
         {mapLines}
 
