@@ -5,7 +5,6 @@ import { Activity, Users, Building2, TrendingUp } from "lucide-react"
 import { apiService } from "@/services/api.ts"
 import { toast } from "@/components/ui/use-toast.tsx"
 import { useEffect, useState } from "react"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from "recharts"
 import { ChartAreaInteractive } from "@/components/cool-chart"
 
 const stats = [
