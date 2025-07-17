@@ -502,8 +502,8 @@ export default function UsersPage() {
           <AlertDialogFooter>
             <AlertDialogCancel className="transition-all duration-300 ease-in-out">取消</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all duration-300 ease-in-out"
+                onClick={handleConfirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all duration-300 ease-in-out"
             >
               确认删除
             </AlertDialogAction>
