@@ -1210,10 +1210,19 @@ export default function SmartCity() {
                   {isTopBarOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
                 {selectedScene && (
-                  <CardDescription className="text-xs">
-                    当前场景: {selectedScene.name} | 时间: {formatTimestamp(getCurrentTimestamp())} | 步骤:{" "}
-                    {currentTimeStep + 1} / {totalTimeSteps}
-                  </CardDescription>
+                    <CardDescription className="text-sm font-medium py-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <Badge variant="outline" className="bg-primary/10 border-primary/30 px-3 py-1 text-sm">
+                      {selectedScene.name}
+                      </Badge>
+                      <span className="text-primary font-bold text-sm">
+                      {formatTimestamp(getCurrentTimestamp())}
+                      </span>
+                      <Badge variant="secondary" className="ml-auto px-3 py-1 text-sm">
+                      步骤: {currentTimeStep + 1} / {totalTimeSteps}
+                      </Badge>
+                    </div>
+                    </CardDescription>
                 )}
               </CardHeader>
             </CollapsibleTrigger>
@@ -1288,6 +1297,22 @@ export default function SmartCity() {
                       )}
                       请求预测数据
                     </Button>
+                    {/* 右下角控制按钮组 */}
+                    <div className="fixed right-5 z-50 flex flex-col gap-2">
+                      <Button
+                        onClick={() => setShowTrafficLights(!showTrafficLights)}
+                        size="sm"
+                        variant={showTrafficLights ? "default" : "outline"}
+                        className="shadow-lg w-12 h-12 rounded-full p-0 flex items-center justify-center"
+                        title={showTrafficLights ? "隐藏红绿灯" : "显示红绿灯"}
+                      >
+                        {showTrafficLights ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -1372,22 +1397,7 @@ export default function SmartCity() {
         </Card>
       </div>)}
 
-      {/* 右下角控制按钮组 */}
-      <div className="fixed bottom-6 right-20 z-50 flex flex-col gap-2">
-        <Button
-          onClick={() => setShowTrafficLights(!showTrafficLights)}
-          size="sm"
-          variant={showTrafficLights ? "default" : "outline"}
-          className="shadow-lg w-12 h-12 rounded-full p-0 flex items-center justify-center"
-          title={showTrafficLights ? "隐藏红绿灯" : "显示红绿灯"}
-        >
-          {showTrafficLights ? (
-            <EyeOff className="w-5 h-5" />
-          ) : (
-            <Eye className="w-5 h-5" />
-          )}
-        </Button>
-      </div>
+      
 
       {/* 左侧站点详情侧栏 */}
 
