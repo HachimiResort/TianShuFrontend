@@ -3,7 +3,7 @@
 import type React from "react"
 import { TourProvider, useTour } from '@reactour/tour'
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
-import MapReact, { Marker } from "react-map-gl/maplibre"
+import MapReact, { Marker, Popup } from "react-map-gl/maplibre"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,12 +11,13 @@ import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import { apiService } from "@/services/api"
-import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp, ChevronLeft, Lightbulb } from "lucide-react"
+import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp, Lightbulb, Eye, EyeOff } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import ColorLine from "@/components/map/ColorLine"
 import PredictionHeatmap from "@/components/map/PredictionHeatmap"
 import { StationSidebar } from "@/components/map/station-sidebar"
 import { useTheme } from "@/components/theme-context"
+import { TrafficLightMarker } from "@/components/map/TrafficLightMarker"
 
 
 const tour_steps = [
@@ -296,6 +297,8 @@ export default function SmartCity() {
   // 数据状态
   const [currentMeasurementData, setCurrentMeasurementData] = useState<PerLocationData | null>(null)
   const [currentPredictionData, setCurrentPredictionData] = useState<PerLocationData | null>(null)
+  const [trafficLights, setTrafficLights] = useState<any[]>([])
+  const [currentTrafficLightStatuses, setCurrentTrafficLightStatuses] = useState<Map<number, boolean>>(new Map())
 
   // UI状态
   const [isTopBarOpen, setIsTopBarOpen] = useState(true)
@@ -306,11 +309,12 @@ export default function SmartCity() {
 
   // 加载状态
   const [loadingStates, setLoadingStates] = useState({
-    scenes: false,
+  scenes: false,
     locations: false,
     graph: false,
     predictions: false,
     backgroundLoading: false,
+    trafficLights: false,
   })
 
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -422,6 +426,7 @@ export default function SmartCity() {
         showToast("获取图结构信息失败", "destructive")
         return []
       } finally {
+        console.log("图结构信息加载完成")
         setLoadingStates((prev) => ({ ...prev, graph: false }))
       }
     },
@@ -496,6 +501,43 @@ export default function SmartCity() {
     },
     [showToast],
   )
+
+  // 添加获取红绿灯数据的函数
+  const fetchTrafficLights = useCallback(async (sceneId: number, startTime: number, step: number) => {
+    setLoadingStates((prev) => ({ ...prev, trafficLights: true }));
+    try {
+      const response = await apiService.get<any>(`/traffic/scenes/${sceneId}/traffic-lights/traffic-statuses?time=${startTime}&step=${step}`);
+      if (response.success && response.data?.code === 0) {
+        setTrafficLights(response.data.message.history);
+        updateTrafficLightStatuses(response.data.message.history, 0);
+        showToast(`成功加载 ${response.data.message.history.length} 个红绿灯组`, "success");
+        return response.data.message.history;
+      } else {
+        showToast("获取红绿灯信息失败", "destructive");
+        return [];
+      }
+    } catch (error) {
+      showToast("获取红绿灯信息失败", "destructive");
+      return [];
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, trafficLights: false }));
+    }
+  }, [showToast]);
+
+  // 更新红绿灯状态
+  const updateTrafficLightStatuses = useCallback((trafficLightsData: any[], timeStep: number) => {
+    const statusMap = new Map<number, boolean>();
+    trafficLightsData.forEach(light => {
+      const statusHistory = light.status_history.find((status: any) => status.current_step === timeStep);
+      if (statusHistory) {
+        statusMap.set(light.light_id * 10 + 1, statusHistory.status === 1); // N
+        statusMap.set(light.light_id * 10 + 3, statusHistory.status === 1); // S
+        statusMap.set(light.light_id * 10 + 2, statusHistory.status !== 1); // E
+        statusMap.set(light.light_id * 10 + 4, statusHistory.status !== 1); // W
+      }
+    });
+    setCurrentTrafficLightStatuses(statusMap);
+  }, []);
 
   // 后台数据加载逻辑
   const manageStreamingBuffer = useCallback(
@@ -626,36 +668,50 @@ export default function SmartCity() {
   // 选择场景
   const handleSceneSelect = useCallback(
     (scene: Scene) => {
-      loadingControllerRef.current.abort = true
-      setSelectedScene(scene)
-      setCurrentTimeStep(0)
+      // 如果点击的是当前已选场景，不做任何操作
+      if (selectedScene?.scene_id === scene.scene_id) {
+        showToast(`已经是当前场景: ${scene.name}`, "default");
+        return;
+      }
 
-      const steps = Math.floor((scene.measurement_end_time - scene.measurement_start_time) / scene.step_length)
-      setTotalTimeSteps(steps)
+      loadingControllerRef.current.abort = true;
+      setSelectedScene(scene);
+      setCurrentTimeStep(0);
 
-      setCurrentMeasurementData(null)
-      setCurrentPredictionData(null)
-      setSelectedStationData(null)
-      setIsSidebarOpen(false)
-      dataCache.current.clear()
-      setTimeStepStatuses(new Map())
+      const steps = Math.floor((scene.measurement_end_time - scene.measurement_start_time) / scene.step_length);
+      setTotalTimeSteps(steps);
 
-      showToast(`已选择场景: ${scene.name}`, "success")
+      // 清除所有相关数据
+      setCurrentMeasurementData(null);
+      setCurrentPredictionData(null);
+      setSelectedStationData(null);
+      setIsSidebarOpen(false);
+      dataCache.current.clear();
+      setTimeStepStatuses(new Map());
+      setTrafficLights([]);
+      setCurrentTrafficLightStatuses(new Map());
+
+      showToast(`已选择场景: ${scene.name}`, "success");
     },
-    [showToast],
-  )
+    [selectedScene, showToast],  // 添加 selectedScene 到依赖数组
+  );
 
   // 加载数据
   const handleLoadData = useCallback(async () => {
     if (!selectedScene) return
 
     showToast("开始加载数据...", "default")
+    console.log("开始加载数据...")
 
     loadingControllerRef.current.abort = true
     loadingControllerRef.current = { abort: false }
 
-    await Promise.all([fetchLocations(selectedScene.scene_id), fetchGraph(selectedScene.area_id)])
-  }, [selectedScene, fetchLocations, fetchGraph, showToast])
+    await Promise.all([
+      fetchLocations(selectedScene.scene_id),
+      fetchGraph(selectedScene.area_id),
+      fetchTrafficLights(selectedScene.scene_id, selectedScene.measurement_start_time, totalTimeSteps)
+    ])
+  }, [selectedScene, fetchLocations, fetchGraph, showToast, totalTimeSteps]);
 
   useEffect(() => {
     if (locations.length > 0 && graphEdges.length > 0) {
@@ -707,7 +763,8 @@ export default function SmartCity() {
     const dataForStep = dataCache.current.getDataForTimeStep(currentTimeStep)
     setCurrentMeasurementData(dataForStep?.measurement ?? null)
     setCurrentPredictionData(dataForStep?.prediction ?? null)
-  }, [currentTimeStep, selectedScene, timeStepStatuses])
+    updateTrafficLightStatuses(trafficLights, currentTimeStep);
+  }, [currentTimeStep, selectedScene, timeStepStatuses, trafficLights]);
 
   // 播放控制
   const handlePlayPause = useCallback(() => {
@@ -767,30 +824,75 @@ export default function SmartCity() {
     return { minVelocity, maxVelocity, getColor }
   }, [currentMeasurementData])
 
+  // 在 SmartCity 组件中添加状态
+  const [showTrafficLights, setShowTrafficLights] = useState(true); // 新增状态控制红绿灯显示
+  const [hoveredMarker, setHoveredMarker] = useState<{
+    location: Location;
+    velocity: number;
+  } | null>(null);
+
+  // 计算拥挤程度并返回等级和颜色
+  const calculateCongestionLevel = useCallback(
+    (velocity: number) => {
+      if (!currentMeasurementData || currentMeasurementData.size === 0) {
+        return { level: "N/A", color: "#808080" };
+      }
+      const { minVelocity, maxVelocity } = getVelocityColorMapping;
+      if (maxVelocity === minVelocity) {
+        return { level: "通常", color: "#3b82f6" }; // 蓝色
+      }
+      const ratio = ((velocity - minVelocity) / (maxVelocity - minVelocity)) * 100;
+      const congestionRatio = 100 - ratio;
+
+      if (congestionRatio < 25) {
+        return { level: "很通畅", color: "#10b981" }; // 绿色
+      } else if (congestionRatio < 50) {
+        return { level: "通畅", color: "#3b82f6" }; // 蓝色
+      } else if (congestionRatio < 75) {
+        return { level: "拥挤", color: "#f59e0b" }; // 黄色
+      } else {
+        return { level: "很拥挤", color: "#ef4444" }; // 红色
+      }
+    },
+    [currentMeasurementData, getVelocityColorMapping]
+  );
+
   // 生成地图上的点标记
   const mapMarkers = useMemo(() => {
-    if (!currentMeasurementData || !locations.length) return []
+    if (!currentMeasurementData || !locations.length) return [];
 
-    return locations.map((location,idx) => {
-      const data = currentMeasurementData.get(location.location_id)
-      const color = data ? getVelocityColorMapping.getColor(data.velocity_record) : "#808080"
+    return locations.map((location, idx) => {
+      const data = currentMeasurementData.get(location.location_id);
+      const color = data ? getVelocityColorMapping.getColor(data.velocity_record) : "#808080";
 
       return (
-        <Marker key={location.location_id} longitude={location.longitude} latitude={location.latitude}>
+        <Marker
+          key={location.location_id}
+          longitude={location.longitude}
+          latitude={location.latitude}
+        >
           <div
             className="w-4 h-4 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-110 transition-transform"
             style={{ backgroundColor: color }}
-            title={`地点 ${location.location_id}: ${data?.velocity_record.toFixed(2) || "N/A"} km/h`}
-            onClick={(e) => {
-              e.stopPropagation()
-              handleStationClick(location)
+            onMouseEnter={() => {
+              if (data) {
+                setHoveredMarker({
+                  location,
+                  velocity: data.velocity_record,
+                });
+              }
             }}
-            data-tour= {idx===20 ? 'marker-0' : undefined}
+            onMouseLeave={() => setHoveredMarker(null)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleStationClick(location);
+            }}
+            data-tour={idx === 20 ? "marker-0" : undefined}
           />
         </Marker>
-      )
-    })
-  }, [currentMeasurementData, locations, getVelocityColorMapping, handleStationClick])
+      );
+    });
+  }, [currentMeasurementData, locations, getVelocityColorMapping, handleStationClick]);
 
   // 生成线条基础结构（只在坐标数据变化时重新计算）
   const lineStructures = useMemo(() => {
@@ -893,6 +995,83 @@ export default function SmartCity() {
     } as GeoJSON.FeatureCollection<GeoJSON.Point>
   }, [currentPredictionData, locations])
 
+  // 生成红绿灯标记
+  const trafficLightMarkers = useMemo(() => {
+    if (!trafficLights.length) return [];
+
+    const markers: React.ReactNode[] = [];
+    trafficLights.forEach(light => {
+      const coords = light.coordinates;
+      const lightId = light.light_id;
+      
+      // N direction
+      if (coords.N_latitude && coords.N_longitude) {
+        const lat = parseFloat(coords.N_latitude);
+        const lon = parseFloat(coords.N_longitude);
+        const isGreen = currentTrafficLightStatuses.get(lightId * 10 + 1) || false;
+        markers.push(
+          <TrafficLightMarker 
+            key={`${lightId}-N`}
+            id={`${lightId}-N`}
+            longitude={lon}
+            latitude={lat}
+            isGreen={isGreen}
+          />
+        );
+      }
+      
+      // E direction
+      if (coords.E_latitude && coords.E_longitude) {
+        const lat = parseFloat(coords.E_latitude);
+        const lon = parseFloat(coords.E_longitude);
+        const isGreen = currentTrafficLightStatuses.get(lightId * 10 + 2) || false;
+        markers.push(
+          <TrafficLightMarker 
+            key={`${lightId}-E`}
+            id={`${lightId}-E`}
+            longitude={lon}
+            latitude={lat}
+            isGreen={isGreen}
+          />
+        );
+      }
+      
+      // S direction
+      if (coords.S_latitude && coords.S_longitude) {
+        const lat = parseFloat(coords.S_latitude);
+        const lon = parseFloat(coords.S_longitude);
+        const isGreen = currentTrafficLightStatuses.get(lightId * 10 + 3) || false;
+        markers.push(
+          <TrafficLightMarker 
+            key={`${lightId}-S`}
+            id={`${lightId}-S`}
+            longitude={lon}
+            latitude={lat}
+            isGreen={isGreen}
+          />
+        );
+      }
+      
+      // W direction
+      if (coords.W_latitude && coords.W_longitude) {
+        const lat = parseFloat(coords.W_latitude);
+        const lon = parseFloat(coords.W_longitude);
+        const isGreen = currentTrafficLightStatuses.get(lightId * 10 + 4) || false;
+        markers.push(
+          <TrafficLightMarker 
+            key={`${lightId}-W`}
+            id={`${lightId}-W`}
+            longitude={lon}
+            latitude={lat}
+            isGreen={isGreen}
+          />
+        );
+      }
+    });
+    
+    return markers;
+  }, [trafficLights, currentTrafficLightStatuses]);
+
   // 自定义Slider样式
   const getSliderStyle = useCallback(() => {
     if (!selectedScene || totalTimeSteps === 0) return {}
@@ -980,8 +1159,39 @@ export default function SmartCity() {
           minVelocity={getVelocityColorMapping.minVelocity}
           maxVelocity={getVelocityColorMapping.maxVelocity}
         />
+        
         {mapMarkers}
+        {showTrafficLights && trafficLightMarkers}
         {mapLines}
+
+        {/* 悬浮浮窗 */}
+        {hoveredMarker && (
+          <Popup
+            longitude={hoveredMarker.location.longitude}
+            latitude={hoveredMarker.location.latitude}
+            closeButton={false}
+            closeOnClick={false}
+            anchor="bottom"
+            offset={10}
+            className="text-sm"
+          >
+            <div className="space-y-1">
+              <div className="font-medium">站点 {hoveredMarker.location.location_id}</div>
+              <div>速度: {hoveredMarker.velocity.toFixed(2)} km/h</div>
+              <div>
+                拥挤程度:{" "}
+                <span
+                  style={{
+                    color: calculateCongestionLevel(hoveredMarker.velocity).color,
+                    fontWeight: "bold",
+                  }}
+                >
+                  {calculateCongestionLevel(hoveredMarker.velocity).level}
+                </span>
+              </div>
+            </div>
+          </Popup>
+        )}
       </MapReact>
 
       {/* 顶部可折叠状态栏 */}
@@ -1001,10 +1211,19 @@ export default function SmartCity() {
                   {isTopBarOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
                 {selectedScene && (
-                  <CardDescription className="text-xs">
-                    当前场景: {selectedScene.name} | 时间: {formatTimestamp(getCurrentTimestamp())} | 步骤:{" "}
-                    {currentTimeStep + 1} / {totalTimeSteps}
-                  </CardDescription>
+                    <CardDescription className="text-sm font-medium py-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <Badge variant="outline" className="bg-primary/10 border-primary/30 px-3 py-1 text-sm">
+                      {selectedScene.name}
+                      </Badge>
+                      <span className="text-primary font-bold text-sm">
+                      {formatTimestamp(getCurrentTimestamp())}
+                      </span>
+                      <Badge variant="secondary" className="ml-auto px-3 py-1 text-sm">
+                      步骤: {currentTimeStep + 1} / {totalTimeSteps}
+                      </Badge>
+                    </div>
+                    </CardDescription>
                 )}
               </CardHeader>
             </CollapsibleTrigger>
@@ -1079,6 +1298,22 @@ export default function SmartCity() {
                       )}
                       请求预测数据
                     </Button>
+                    {/* 右下角控制按钮组 */}
+                    <div className="fixed right-5 z-50 flex flex-col gap-2">
+                      <Button
+                        onClick={() => setShowTrafficLights(!showTrafficLights)}
+                        size="sm"
+                        variant={showTrafficLights ? "default" : "outline"}
+                        className="shadow-lg w-12 h-12 rounded-full p-0 flex items-center justify-center"
+                        title={showTrafficLights ? "隐藏红绿灯" : "显示红绿灯"}
+                      >
+                        {showTrafficLights ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -1163,21 +1398,9 @@ export default function SmartCity() {
         </Card>
       </div>)}
 
-      {/* 侧栏收缩状态的展开按钮 */}
-      {!isSidebarOpen && (
-        <div className="fixed top-1/2 right-2 z-30 transform -translate-y-1/2">
-          <Button
-            onClick={() => setIsSidebarOpen(true)}
-            size="sm"
-            className="h-12 w-8 rounded-l-lg rounded-r-none bg-background/90 backdrop-blur-sm border shadow-lg hover:bg-background/95 transition-all duration-300"
-            title="展开站点详情"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
+      
 
-      {/* 右侧站点详情侧栏 */}
+      {/* 左侧站点详情侧栏 */}
 
       <StationSidebar
         isOpen={isSidebarOpen}

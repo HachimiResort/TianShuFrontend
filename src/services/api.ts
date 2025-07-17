@@ -19,7 +19,7 @@ class ApiService {
     const defaultHeaders = {
       "Content-Type": "application/json",
       // 如果有token，通常会在这里统一添加
-      'Authorization': `Bearer ${localStorage.getItem("token")}` || ""
+      'Authorization': `Bearer ${localStorage.getItem("token")}` || "",
     }
 
     const mergedOptions: RequestInit = {
