@@ -6,6 +6,7 @@ import { apiService } from "@/services/api.ts"
 import { toast } from "@/components/ui/use-toast.tsx"
 import { useEffect, useState } from "react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from "recharts"
+import { ChartAreaInteractive } from "@/components/cool-chart"
 
 const stats = [
   {
@@ -215,24 +216,7 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={loginData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day"/>
-                  <YAxis>
-                    <Label
-                        value="访问次数"
-                        angle={-90}
-                        position="insideLeft"
-                        offset={10}
-                        style={{ fontSize: 12 }}
-                    />
-                  </YAxis>
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="total_requests" stroke="#8884d8" activeDot={{ r: 8 }} />
-                </LineChart>
-              </ResponsiveContainer>
+              <ChartAreaInteractive data={loginData} />
             </CardContent>
           </Card>
         </div>
