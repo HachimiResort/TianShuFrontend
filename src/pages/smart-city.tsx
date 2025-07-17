@@ -848,7 +848,7 @@ export default function SmartCity() {
   // 计算拥挤程度并返回等级和颜色
   const calculateCongestionLevel = useCallback(
     (velocity: number) => {
-      if (!currentMeasurementData || currentMeasurementData.size === 0 || velocity <= 0) {
+      if (!currentMeasurementData || currentMeasurementData.size === 0) {
         return { level: "N/A", color: "#808080" };
       }
       const { minVelocity, maxVelocity } = getVelocityColorMapping;
