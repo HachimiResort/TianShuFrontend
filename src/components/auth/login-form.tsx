@@ -88,6 +88,7 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         // 登陆成功页面跳转
         navigate("/profile")
       }
+
       if (result.data?.code == 110) {
         toast({
           description: "请先前往邮箱验证！",

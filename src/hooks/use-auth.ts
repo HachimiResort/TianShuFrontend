@@ -47,7 +47,7 @@ export function useAuth() {
     setError(null)
 
     try {
-      const response = await apiService.post<LoginResponse>("/auth/complex-login", credentials)
+      const response = await apiService.post<LoginResponse>("/auth/login", credentials)
       console.log("Login response:", response)
 
       if (response.success && response.data?.code===0) {
