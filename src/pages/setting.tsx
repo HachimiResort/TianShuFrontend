@@ -22,13 +22,13 @@ export default function Setting() {
             {/* 顶栏设置选项 */}
             <div className="flex space-x-4">
                 <Button
-                    variant={activeTab === 'changePassword' ?  'default': 'outline'}
+                    variant={activeTab === 'changePassword' ?  'destructive': 'outline'}
                     onClick={() => handleTabChange('changePassword')}
                 >
                     修改密码
                 </Button>
                 <Button
-                    variant={activeTab === 'deviceManagement' ? 'default': 'outline'}
+                    variant={activeTab === 'deviceManagement' ? 'destructive': 'outline'}
                     onClick={() => handleTabChange('deviceManagement')}
                 >
                     设备管理
