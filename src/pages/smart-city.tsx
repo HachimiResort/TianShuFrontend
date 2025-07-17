@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import { apiService } from "@/services/api"
-import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp, ChevronLeft, Lightbulb, Eye, EyeOff } from "lucide-react"
+import { Play, Pause, Database, Loader2, CheckCircle, Zap, ChevronDown, ChevronUp, Lightbulb, Eye, EyeOff } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import ColorLine from "@/components/map/ColorLine"
 import PredictionHeatmap from "@/components/map/PredictionHeatmap"
@@ -1159,8 +1159,9 @@ export default function SmartCity() {
           minVelocity={getVelocityColorMapping.minVelocity}
           maxVelocity={getVelocityColorMapping.maxVelocity}
         />
-        {showTrafficLights && trafficLightMarkers}
+        
         {mapMarkers}
+        {showTrafficLights && trafficLightMarkers}
         {mapLines}
 
         {/* 悬浮浮窗 */}
