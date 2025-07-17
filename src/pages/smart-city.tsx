@@ -263,12 +263,15 @@ class DataCache {
   }
 }
 
-function GuideButton() {
+// 修改 GuideButton 组件的位置和逻辑
+function GuideButton({ isSidebarOpen }: { isSidebarOpen: boolean }) {
   const { setIsOpen } = useTour()
   return (
     <button
       onClick={() => setIsOpen(true)}
-      className="fixed z-50 bottom-6 right-6 w-12 h-12 rounded-full bg-yellow-400 hover:bg-yellow-300 shadow-lg flex items-center justify-center transition-all duration-200 border-2 border-white/80"
+      className={`fixed z-40 bottom-6 right-6 w-12 h-12 rounded-full bg-yellow-400 hover:bg-yellow-300 shadow-lg flex items-center justify-center transition-all duration-200 border-2 border-white/80 ${
+        isSidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100"
+      }`}
       style={{ boxShadow: '0 4px 16px 0 rgba(0,0,0,0.12)' }}
       title="新手引导"
     >
@@ -1143,319 +1146,320 @@ export default function SmartCity() {
         }),
       }}
     >
-    <GuideButton />
-    <div
-      style={{ height: "100vh", width: "100vw", position: "fixed", top: 0, left: 0, zIndex: 0 }}
-      onContextMenu={handleRightClick}
-      data-tour="tour-map"
-    >
-      {/* 全屏地图 */}
-      <MapReact
-        initialViewState={{
-          longitude: 116.39657,
-          latitude: 39.95616,
-          zoom: 13,
-        }}
-        {...viewState}
-        onMove={(evt) => setViewState(evt.viewState)}
-        style={{
-          width: "100vw",
-          height: "100vh",
-          position: "absolute",
-          top: 0,
-          left: 0,
-        }}
-        mapStyle="https://api.maptiler.com/maps/streets/style.json?key=AKUofKhmm1j1S5bzzZ0F"
+      {/* 将 GuideButton 放在这里，并传入 isSidebarOpen 状态 */}
+      <GuideButton isSidebarOpen={isSidebarOpen} />
+      <div
+        style={{ height: "100vh", width: "100vw", position: "fixed", top: 0, left: 0, zIndex: 0 }}
+        onContextMenu={handleRightClick}
+        data-tour="tour-map"
       >
-        {/* 预测热力图 */}
-        <PredictionHeatmap
-          geojson={predictionGeoJson}
-          minVelocity={getVelocityColorMapping.minVelocity}
-          maxVelocity={getVelocityColorMapping.maxVelocity}
-        />
+        {/* 全屏地图 */}
+        <MapReact
+          initialViewState={{
+            longitude: 116.39657,
+            latitude: 39.95616,
+            zoom: 13,
+          }}
+          {...viewState}
+          onMove={(evt) => setViewState(evt.viewState)}
+          style={{
+            width: "100vw",
+            height: "100vh",
+            position: "absolute",
+            top: 0,
+            left: 0,
+          }}
+          mapStyle="https://api.maptiler.com/maps/streets/style.json?key=AKUofKhmm1j1S5bzzZ0F"
+        >
+          {/* 预测热力图 */}
+          <PredictionHeatmap
+            geojson={predictionGeoJson}
+            minVelocity={getVelocityColorMapping.minVelocity}
+            maxVelocity={getVelocityColorMapping.maxVelocity}
+          />
 
-        {mapMarkers}
-        {showTrafficLights && trafficLightMarkers}
-        {mapLines}
+          {mapMarkers}
+          {showTrafficLights && trafficLightMarkers}
+          {mapLines}
 
-        {/* 悬浮浮窗 */}
-        {hoveredMarker && (
-          <Popup
-            longitude={hoveredMarker.location.longitude}
-            latitude={hoveredMarker.location.latitude}
-            closeButton={false}
-            closeOnClick={false}
-            anchor="bottom"
-            offset={10}
-            className="text-sm"
-          >
-            <div className="space-y-1">
-              <div className="font-medium">站点 {hoveredMarker.location.location_id}</div>
-              <div>速度: {hoveredMarker.velocity.toFixed(2)} km/h</div>
-              <div>
-                拥挤程度:{" "}
-                <span
-                  style={{
-                    color: calculateCongestionLevel(hoveredMarker.velocity).color,
-                    fontWeight: "bold",
-                  }}
-                >
-                  {calculateCongestionLevel(hoveredMarker.velocity).level}
-                </span>
+          {/* 悬浮浮窗 */}
+          {hoveredMarker && (
+            <Popup
+              longitude={hoveredMarker.location.longitude}
+              latitude={hoveredMarker.location.latitude}
+              closeButton={false}
+              closeOnClick={false}
+              anchor="bottom"
+              offset={10}
+              className="text-sm"
+            >
+              <div className="space-y-1">
+                <div className="font-medium">站点 {hoveredMarker.location.location_id}</div>
+                <div>速度: {hoveredMarker.velocity.toFixed(2)} km/h</div>
+                <div>
+                  拥挤程度:{" "}
+                  <span
+                    style={{
+                      color: calculateCongestionLevel(hoveredMarker.velocity).color,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {calculateCongestionLevel(hoveredMarker.velocity).level}
+                  </span>
+                </div>
               </div>
-            </div>
-          </Popup>
-        )}
-      </MapReact>
+            </Popup>
+          )}
+        </MapReact>
 
-      {/* 顶部可折叠状态栏 */}
-      <div className="absolute top-2 left-2 right-2 z-10 max-w-xl mx-auto transition-all duration-300" data-tour="top-bar">  
-        <Collapsible open={isTopBarOpen} onOpenChange={setIsTopBarOpen}>
-          <Card
-            className={`${theme === "light" ? "bg-white/20" : "bg-black/70"} backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out text-sm p-2`}
-          >
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Database className="w-5 h-5" />
-                    城市交通地图可视化
-                    {loadingStates.backgroundLoading && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
-                  </CardTitle>
-                  {isTopBarOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </div>
-                {selectedScene && (
-                    <CardDescription className="text-sm font-medium py-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <Badge variant="outline" className="bg-primary/10 border-primary/30 px-3 py-1 text-sm">
-                      {selectedScene.name}
-                      </Badge>
-                      <span className="text-primary font-bold text-sm">
-                      {formatTimestamp(getCurrentTimestamp())}
-                      </span>
-                      <Badge variant="secondary" className="ml-auto px-3 py-1 text-sm">
-                      步骤: {currentTimeStep + 1} / {totalTimeSteps}
-                      </Badge>
-                    </div>
-                    </CardDescription>
-                )}
-              </CardHeader>
-            </CollapsibleTrigger>
-
-            <CollapsibleContent>
-              <CardContent className="space-y-2 p-2 text-sm">
-                {/* 场景选择 */}
-                <div className="space-y-1">
-                  <h3 className="text-xs font-medium">选择场景</h3>
-                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3" data-tour="scene-select">
-                    {scenes.map((scene) => (
-                      <Card
-                        key={scene.scene_id}
-                        className={`cursor-pointer transition-all duration-300 hover:shadow-lg ${
-                          selectedScene?.scene_id === scene.scene_id
-                            ? "ring-2 ring-primary bg-primary/5"
-                            : "hover:bg-muted/50"
-                        } text-xs p-2`}
-                        onClick={() => handleSceneSelect(scene)}
-                      >
-                        <CardContent className="p-2">
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium text-xs">{scene.name}</h4>
-                              {selectedScene?.scene_id === scene.scene_id && (
-                                <CheckCircle className="w-3 h-3 text-primary" />
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">{scene.description}</p>
-                            <div className="flex flex-wrap gap-1">
-                              <Badge variant="outline" className="text-xs">
-                                {scene.area}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                步长: {scene.step_length}s
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+        {/* 顶部可折叠状态栏 */}
+        <div className="absolute top-2 left-2 right-2 z-10 max-w-xl mx-auto transition-all duration-300" data-tour="top-bar">  
+          <Collapsible open={isTopBarOpen} onOpenChange={setIsTopBarOpen}>
+            <Card
+              className={`${theme === "light" ? "bg-white/20" : "bg-black/70"} backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out text-sm p-2`}
+            >
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Database className="w-5 h-5" />
+                      城市交通地图可视化
+                      {loadingStates.backgroundLoading && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+                    </CardTitle>
+                    {isTopBarOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </div>
-                </div>
-
-                {/* 操作按钮 */}
-                {selectedScene && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={handleLoadData}
-                      disabled={loadingStates.locations || loadingStates.graph}
-                      size="sm"
-                      className="text-xs px-2 py-1"
-                      data-tour="top-load-data-button"
-                    >
-                      {(loadingStates.locations || loadingStates.graph) && (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      )}
-                      加载数据
-                    </Button>
-
-                    <Button
-                      onClick={handleRequestPrediction}
-                      variant="outline"
-                      size="sm"
-                      disabled={loadingStates.predictions || !locations.length}
-                      className="text-xs px-2 py-1 bg-transparent"
-                    >
-                      {loadingStates.predictions ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Zap className="w-4 h-4 mr-2" />
-                      )}
-                      请求预测数据
-                    </Button>
-                    {/* 右下角控制按钮组 */}
-                    <div className="fixed right-5 z-50 flex flex-col gap-2">
-                      <Button
-                        onClick={() => setShowTrafficLights(!showTrafficLights)}
-                        size="sm"
-                        variant={showTrafficLights ? "default" : "outline"}
-                        className="shadow-lg w-12 h-12 rounded-full p-0 flex items-center justify-center"
-                        title={showTrafficLights ? "隐藏红绿灯" : "显示红绿灯"}
-                      >
-                        {showTrafficLights ? (
-                          <EyeOff className="w-5 h-5" />
-                        ) : (
-                          <Eye className="w-5 h-5" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* 统计信息 */}
-                {selectedScene && locations.length > 0 && (
-                  <div className="grid gap-2 md:grid-cols-4 text-center text-xs">
-                    <div>
-                      <div className="text-base font-bold text-primary">{locations.length}</div>
-                      <div className="text-xs text-muted-foreground">地点数量</div>
-                    </div>
-                    <div>
-                      <div className="text-base font-bold text-primary">{graphEdges.length}</div>
-                      <div className="text-xs text-muted-foreground">连接边数</div>
-                    </div>
-                    <div>
-                      <div className="text-base font-bold text-primary">{totalTimeSteps}</div>
-                      <div className="text-xs text-muted-foreground">时间步数</div>
-                    </div>
-                    <div>
-                      <div className="text-base font-bold text-primary">
-                        {getVelocityColorMapping.minVelocity.toFixed(1)} -{" "}
-                        {getVelocityColorMapping.maxVelocity.toFixed(1)}
+                  {selectedScene && (
+                      <CardDescription className="text-sm font-medium py-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <Badge variant="outline" className="bg-primary/10 border-primary/30 px-3 py-1 text-sm">
+                        {selectedScene.name}
+                        </Badge>
+                        <span className="text-primary font-bold text-sm">
+                        {formatTimestamp(getCurrentTimestamp())}
+                        </span>
+                        <Badge variant="secondary" className="ml-auto px-3 py-1 text-sm">
+                        步骤: {currentTimeStep + 1} / {totalTimeSteps}
+                        </Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground">速度范围 (km/h)</div>
+                      </CardDescription>
+                  )}
+                </CardHeader>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent>
+                <CardContent className="space-y-2 p-2 text-sm">
+                  {/* 场景选择 */}
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-medium">选择场景</h3>
+                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3" data-tour="scene-select">
+                      {scenes.map((scene) => (
+                        <Card
+                          key={scene.scene_id}
+                          className={`cursor-pointer transition-all duration-300 hover:shadow-lg ${
+                            selectedScene?.scene_id === scene.scene_id
+                              ? "ring-2 ring-primary bg-primary/5"
+                              : "hover:bg-muted/50"
+                          } text-xs p-2`}
+                          onClick={() => handleSceneSelect(scene)}
+                        >
+                          <CardContent className="p-2">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-medium text-xs">{scene.name}</h4>
+                                {selectedScene?.scene_id === scene.scene_id && (
+                                  <CheckCircle className="w-3 h-3 text-primary" />
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{scene.description}</p>
+                              <div className="flex flex-wrap gap-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {scene.area}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  步长: {scene.step_length}s
+                                </Badge>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   </div>
-                )}
-              </CardContent>
-            </CollapsibleContent>
+
+                  {/* 操作按钮 */}
+                  {selectedScene && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={handleLoadData}
+                        disabled={loadingStates.locations || loadingStates.graph}
+                        size="sm"
+                        className="text-xs px-2 py-1"
+                        data-tour="top-load-data-button"
+                      >
+                        {(loadingStates.locations || loadingStates.graph) && (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        )}
+                        加载数据
+                      </Button>
+
+                      <Button
+                        onClick={handleRequestPrediction}
+                        variant="outline"
+                        size="sm"
+                        disabled={loadingStates.predictions || !locations.length}
+                        className="text-xs px-2 py-1 bg-transparent"
+                      >
+                        {loadingStates.predictions ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Zap className="w-4 h-4 mr-2" />
+                        )}
+                        请求预测数据
+                      </Button>
+                      {/* 右下角控制按钮组 */}
+                      <div className="fixed right-5 z-50 flex flex-col gap-2">
+                        <Button
+                          onClick={() => setShowTrafficLights(!showTrafficLights)}
+                          size="sm"
+                          variant={showTrafficLights ? "default" : "outline"}
+                          className="shadow-lg w-12 h-12 rounded-full p-0 flex items-center justify-center"
+                          title={showTrafficLights ? "隐藏红绿灯" : "显示红绿灯"}
+                        >
+                          {showTrafficLights ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 统计信息 */}
+                  {selectedScene && locations.length > 0 && (
+                    <div className="grid gap-2 md:grid-cols-4 text-center text-xs">
+                      <div>
+                        <div className="text-base font-bold text-primary">{locations.length}</div>
+                        <div className="text-xs text-muted-foreground">地点数量</div>
+                      </div>
+                      <div>
+                        <div className="text-base font-bold text-primary">{graphEdges.length}</div>
+                        <div className="text-xs text-muted-foreground">连接边数</div>
+                      </div>
+                      <div>
+                        <div className="text-base font-bold text-primary">{totalTimeSteps}</div>
+                        <div className="text-xs text-muted-foreground">时间步数</div>
+                      </div>
+                      <div>
+                        <div className="text-base font-bold text-primary">
+                          {getVelocityColorMapping.minVelocity.toFixed(1)} -{" "}
+                          {getVelocityColorMapping.maxVelocity.toFixed(1)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">速度范围 (km/h)</div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        </div>
+
+        {/* 底部时间控制条 */}
+        {selectedScene && locations.length > 0 && (
+        <div className="absolute bottom-2 left-2 right-2 z-10 max-w-xl mx-auto transition-all duration-300" data-tour="bottom-bar">
+          <Card className="bg-white/60 backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out p-2 text-sm">
+            <CardContent className="p-2 space-y-2 bg-transparent">
+              {/* 时间滑块 */}
+              <div className="space-y-1">
+                <div className="relative">
+                  <div className="h-2 rounded-full border" style={getSliderStyle()} />
+                  <Slider
+                    value={[currentTimeStep]}
+                    onValueChange={([value]) => handleTimeStepChange(value)}
+                    max={totalTimeSteps - 1}
+                    step={1}
+                    className="absolute inset-0 [&>span:first-child]:bg-transparent [&>span:first-child]:border-0"
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{selectedScene && formatTimestamp(selectedScene.measurement_start_time)}</span>
+                  <span>{selectedScene && formatTimestamp(selectedScene.measurement_end_time)}</span>
+                </div>
+              </div>
+
+              {/* 控制按钮和图例 */}
+              <div className="flex items-center justify-between">
+                <Button
+                  onClick={handlePlayPause}
+                  variant="outline"
+                  size="sm"
+                  className="bg-transparent text-xs px-2 py-1"
+                >
+                  {isPlaying ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                  {isPlaying ? "暂停" : "播放"}
+                </Button>
+
+                {/* 颜色图例 */}
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: "#FF0000" }}></div>
+                    <span>拥堵 ({getVelocityColorMapping.minVelocity.toFixed(1)} km/h)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: "#00FF00" }}></div>
+                    <span>通畅 ({getVelocityColorMapping.maxVelocity.toFixed(1)} km/h)</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
           </Card>
-        </Collapsible>
-      </div>
+        </div>)}
 
-      {/* 底部时间控制条 */}
-      {selectedScene && locations.length > 0 && (
-      <div className="absolute bottom-2 left-2 right-2 z-10 max-w-xl mx-auto transition-all duration-300" data-tour="bottom-bar">
-        <Card className="bg-white/60 backdrop-blur-lg shadow-xl border-none rounded-2xl transition-all duration-300 ease-in-out p-2 text-sm">
-          <CardContent className="p-2 space-y-2 bg-transparent">
-            {/* 时间滑块 */}
-            <div className="space-y-1">
-              <div className="relative">
-                <div className="h-2 rounded-full border" style={getSliderStyle()} />
-                <Slider
-                  value={[currentTimeStep]}
-                  onValueChange={([value]) => handleTimeStepChange(value)}
-                  max={totalTimeSteps - 1}
-                  step={1}
-                  className="absolute inset-0 [&>span:first-child]:bg-transparent [&>span:first-child]:border-0"
-                />
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{selectedScene && formatTimestamp(selectedScene.measurement_start_time)}</span>
-                <span>{selectedScene && formatTimestamp(selectedScene.measurement_end_time)}</span>
-              </div>
-            </div>
+        
 
-            {/* 控制按钮和图例 */}
-            <div className="flex items-center justify-between">
-              <Button
-                onClick={handlePlayPause}
-                variant="outline"
-                size="sm"
-                className="bg-transparent text-xs px-2 py-1"
-              >
-                {isPlaying ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-                {isPlaying ? "暂停" : "播放"}
-              </Button>
+        {/* 右侧站点详情侧栏 */}
+        <div className="fixed right-0 top-0 h-full z-20 flex">
+          {/* 直接渲染StationSidebar组件 */}
+          {isSidebarOpen && (
+            <StationSidebar
+              isOpen={isSidebarOpen}
+              onClose={() => setIsSidebarOpen(false)}
+              stationData={selectedStationData}
+              currentTimeStep={currentTimeStep}
+              stepLength={selectedScene?.step_length || 300}
+              measurementStartTime={selectedScene?.measurement_start_time || 0}
+              // -- 添加以下两个 props --
+              allLocations={locations}
+              currentMeasurementData={currentMeasurementData}
+            />
+          )}
 
-              {/* 颜色图例 */}
-              <div className="flex items-center gap-2 text-xs">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded" style={{ backgroundColor: "#FF0000" }}></div>
-                  <span>拥堵 ({getVelocityColorMapping.minVelocity.toFixed(1)} km/h)</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded" style={{ backgroundColor: "#00FF00" }}></div>
-                  <span>通畅 ({getVelocityColorMapping.maxVelocity.toFixed(1)} km/h)</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>)}
+          {/* 只在折叠时显示展开按钮 */}
+          {!isSidebarOpen && (
+            <Button
+              onClick={() => setIsSidebarOpen(true)}
+              size="sm"
+              variant="ghost"
+              className="h-full w-6 rounded-l-lg rounded-r-none bg-background border shadow-lg hover:bg-background self-center ml-1"
+              title="展开侧栏"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
 
-      
-
-      {/* 右侧站点详情侧栏 */}
-      <div className="fixed right-0 top-0 h-full z-20 flex">
-        {/* 直接渲染StationSidebar组件 */}
-        {isSidebarOpen && (
-          <StationSidebar
-            isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
-            stationData={selectedStationData}
-            currentTimeStep={currentTimeStep}
-            stepLength={selectedScene?.step_length || 300}
-            measurementStartTime={selectedScene?.measurement_start_time || 0}
-            // -- 添加以下两个 props --
-            allLocations={locations}
-            currentMeasurementData={currentMeasurementData}
+        {/* 折叠状态下的边缘显示 */}
+        {!isSidebarOpen && (
+          <div 
+            className="fixed right-0 top-0 h-full w-1 bg-foreground/10 z-20"
+            style={{
+              boxShadow: '2px 0 4px rgba(0,0,0,0.05)'
+            }}
           />
         )}
 
-        {/* 只在折叠时显示展开按钮 */}
-        {!isSidebarOpen && (
-          <Button
-            onClick={() => setIsSidebarOpen(true)}
-            size="sm"
-            variant="ghost"
-            className="h-full w-6 rounded-l-lg rounded-r-none bg-background border shadow-lg hover:bg-background self-center ml-1"
-            title="展开侧栏"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-        )}
       </div>
-
-      {/* 折叠状态下的边缘显示 */}
-      {!isSidebarOpen && (
-        <div 
-          className="fixed right-0 top-0 h-full w-1 bg-foreground/10 z-20"
-          style={{
-            boxShadow: '2px 0 4px rgba(0,0,0,0.05)'
-          }}
-        />
-      )}
-
-    </div>
     </TourProvider>
     </>
   )
