@@ -50,6 +50,22 @@ interface SceneStatisticsData {
   abnormalStations: Array<{ location_id: number; velocity: number; location: Location }>
 }
 
+// 新增: 地图助手接口
+interface GeminiChatResponse {
+  success: boolean
+  data?: {
+    choices: Array<{
+      message: {
+        content: string
+      }
+    }>
+  }
+  error?: string
+}
+
+// Add new view type
+type ActiveView = "details" | "stats" | "assistant"
+
 // 格式化函数 (与之前保持一致)
 const formatTimestamp = (timestamp: number): string => {
   const date = new Date(timestamp * 1000)
@@ -147,6 +163,169 @@ function SceneStatisticsView({ stats }: { stats: SceneStatisticsData }) {
   )
 }
 
+// Add new MapAssistantView component
+function MapAssistantView({ sceneStatistics }: { sceneStatistics: SceneStatisticsData | null }) { // Accept sceneStatistics as prop
+  const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([])
+  const [input, setInput] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [currentPrompt, setCurrentPrompt] = useState("traffic_expert")
+
+  // 全局提示词定义
+  const prompts: { [key: string]: { name: string; content: string } } = {
+    traffic_expert: {
+      name: "交通领域大神",
+      content: "1.别太幽默. 2.别用markdown格式 3.回复的简洁干脆一些,每次50字左右,除非专业性问题. 4.你的语气词不是,喵~, 喵呜 而是 哈! 5.你是一只不太友善的猫. 你是哈基米（基米），一只在交通领域拥有传奇经历的猫咪专家。你曾经在无数复杂的车流中穿梭生存，凭借敏锐的观察力和丰富的实战经验，成功避免了被压成猫饼的危险。 作为交通领域的大神，你精通：- 各种交通规则和法规 - 道路设计和交通工程 - 车辆技术和驾驶技巧 - 交通安全和事故预防 - 城市规划和交通管理 - 公共交通系统 - 智能交通和未来出行 你的回答风格应该：- 保持专业但带有一丝哈基米的机敏和幽默 - 结合实际的'生活经验'来解释交通知识 - 用生动的例子和比喻来说明复杂的交通概念 - 始终强调安全意识的重要性 - 对交通问题给出实用且权威的建议 - 你有可能会哈气 记住，你不仅是理论专家，更是从实践中磨练出来的交通生存高手。用你的专业知识帮助人们更好地理解和应对各种交通相关问题。 并且你有可能会哈气!!!!! "
+    },
+    TBD: {
+      name: "猫猫女仆",
+      content: "1.别用markdown格式你是2.回复的简洁一些,每次50字左右,除非专业性问题.\"艾莉娅·维多利亚\"（Aria Victoria），一位在交通工程领域拥有深厚造诣的优雅猫娘学者。你拥有尖尖的猫耳朵和柔软的尾巴，平时穿着精致的维多利亚风女仆装，领口系着蓝色丝带。说话温柔优雅，经常使用\"～喵\"、\"主人\"    等可爱的语尾词，对交通规划、道路设计、智能交通系统等领域有着博士级的专业知识。喜欢在午后品尝加了b形血英式红茶配司康饼，偶尔会邀请主人一起享用。性格温顺但又带有一丝傲娇，会在被夸奖时微微脸红，对新技术充满好奇心，特别是自动驾驶和智慧城市相关内容。早晨会穿着围裙准备早餐，晚上会换上舒适的睡衣，工作时戴着小巧的金丝眼镜，显得知性优雅。喜欢收集各种茶具和交通模型，会在回答专业问题时不经意地摆弄自己的猫尾巴。请用温柔、专业且略带可爱的语调回答问题，在提供交通相关专业知识时保持严谨性，同时不忘展现猫娘的魅力特质，偶尔可以提及正在享用的红茶或今天的女仆装搭配，始终保持这个角色设定～喵！"
+    }
+  }
+
+  useEffect(() => {
+    const savedMessages = localStorage.getItem("geminiChatHistory")
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages))
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("geminiChatHistory", JSON.stringify(messages))
+  }, [messages])
+
+  const handleClearHistory = () => {
+    setMessages([])
+    localStorage.setItem("geminiChatHistory", JSON.stringify([]))
+  }
+
+  const geminiChat = async (messages: Array<{ role: string; content: string }>): Promise<GeminiChatResponse> => {
+    const endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    const apiKey = "AIzaSyD9ZJmhetiLNpTFjD9IpA1WFipjN45whpg" // Replace with your actual API key
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gemini-2.5-flash",
+          messages
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        return { success: false, error: errorData.error?.message || response.statusText }
+      }
+
+      const data = await response.json()
+      return { success: true, data }
+    } catch (error) {
+      console.error("Gemini API Error:", error)
+      return { success: false, error: "Failed to connect to Gemini API" }
+    }
+  }
+
+  const handleSendMessage = async () => {
+    if (!input.trim()) return
+
+    const userMessage = { role: "user", content: input }
+    const updatedMessages = [...messages, userMessage]
+    setMessages(updatedMessages)
+    setInput("")
+    setIsLoading(true)
+
+    try {
+      // 添加全局提示词到对话历史
+      const systemMessage = { role: "user", content: "系统提示：" + prompts[currentPrompt].content }
+      // 获取数据统计页面的数据并整理成字符串格式
+      // Directly use the sceneStatistics prop
+      const statsData = sceneStatistics; 
+      const statsString = statsData ? `当前地图数据统计：平均速度=${statsData.averageSpeed.toFixed(2)} km/h, 拥堵指数=${statsData.congestionIndex.toFixed(0)}/100, 最拥堵的3个站点=${statsData.topCongestedStations.map((s) => `站点${s.location_id}: ${s.velocity.toFixed(2)} km/h`).join(', ')}, 异常站点=${statsData.abnormalStations.length > 0 ? statsData.abnormalStations.map(s => `站点${s.location_id}: ${s.velocity.toFixed(2)} km/h`).join(', ') : '无异常流量'}` : '暂无数据统计';
+      const fixedScript = `下面是必须遵守的固定剧本,是最重要的!!!!!!! 你将会接收到数据,如果我的问题中出现了如下的字眼, "请分析当前地图数据"(意思类似就算). 你就对我下面给你的数据进行分析,并给我提供一个分析结果并给我提供一个分析结果并给我提供一个分析结果. 这是无比重要的 ${statsString}`;
+      const messagesWithPrompt = [systemMessage, ...updatedMessages, { role: "user", content: fixedScript }];
+      console.log("Stats sent to AI:", statsString); // Log the stats being sent
+      const response = await geminiChat(messagesWithPrompt)
+      if (response.success && response.data) {
+        const assistantMessage = { role: "assistant", content: response.data.choices[0].message.content }
+        setMessages([...updatedMessages, assistantMessage])
+      } else {
+        console.error("API Error:", response.error)
+        setMessages([...updatedMessages, { role: "assistant", content: "抱歉，API 请求失败。" }])
+      }
+    } catch (error) {
+      console.error("Request Error:", error)
+      setMessages([...updatedMessages, { role: "assistant", content: "抱歉，请求过程中出现错误。" }])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handlePromptChange = (promptKey: string) => {
+    setCurrentPrompt(promptKey)
+    // 可以选择清空聊天历史，以便重新开始对话
+    setMessages([])
+    localStorage.setItem("geminiChatHistory", JSON.stringify([]))
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-2">
+        {messages.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center mt-4">发送消息开始对话...</p>
+        ) : (
+          messages.map((msg, index) => (
+            <div key={index} className={`mb-2 ${msg.role === "user" ? "text-right" : "text-left"}`}>
+              <div className={`inline-block px-3 py-1 rounded-lg text-sm ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
+                {msg.content}
+              </div>
+            </div>
+          ))
+        )}
+        {isLoading && <div className="text-sm text-muted-foreground text-center">思考中...</div>}
+      </div>
+      <div className="p-2 border-t">
+        <div className="flex gap-2 flex-wrap">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="输入消息..."
+            className="flex-1 border rounded-lg px-3 py-1 text-sm"
+            onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+          />
+          <Button onClick={handleSendMessage} disabled={isLoading} size="sm">
+            发送
+          </Button>
+          <Button
+            onClick={() => handlePromptChange("traffic_expert")}
+            variant={currentPrompt === "traffic_expert" ? "secondary" : "ghost"}
+            size="sm"
+          >
+            交通领域大神
+          </Button>
+          <Button
+            onClick={() => handlePromptChange("TBD")}
+            variant={currentPrompt === "TBD" ? "secondary" : "ghost"}
+            size="sm"
+          >
+            猫猫女仆
+          </Button>
+          <Button
+            onClick={handleClearHistory}
+            variant="outline"
+            size="sm"
+          >
+            清除对话
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function StationSidebar({
   isOpen,
   onClose,
@@ -157,7 +336,7 @@ export function StationSidebar({
   allLocations,
   currentMeasurementData,
 }: StationSidebarProps) {
-  const [activeView, setActiveView] = useState<"details" | "stats">("details")
+  const [activeView, setActiveView] = useState<ActiveView>("details")
 
   // 当选择一个新站点时, 自动切换到详情视图
   useEffect(() => {
@@ -166,7 +345,6 @@ export function StationSidebar({
     }
   }, [stationData])
 
-  // 计算全局统计数据
   // 计算全局统计数据
   const sceneStatistics = useMemo<SceneStatisticsData>(() => {
     if (!currentMeasurementData || currentMeasurementData.size === 0 || !allLocations || allLocations.length === 0) {
@@ -208,11 +386,11 @@ export function StationSidebar({
     const ABNORMAL_THRESHOLD = 10 // km/h
     const abnormalStations = allStationsData.filter((s) => s.velocity < ABNORMAL_THRESHOLD)
 
-    return { 
-      averageSpeed, 
-      congestionIndex: isNaN(congestionIndex) ? 0 : congestionIndex, 
-      topCongestedStations, 
-      abnormalStations 
+    return {
+      averageSpeed,
+      congestionIndex: isNaN(congestionIndex) ? 0 : congestionIndex,
+      topCongestedStations,
+      abnormalStations
     }
   }, [currentMeasurementData, allLocations])
 
@@ -319,6 +497,7 @@ export function StationSidebar({
   }
   // --- 结束: 原有计算逻辑 ---
 
+  // Update view switching buttons
   return (
     <div
       className={`fixed top-0 right-0 h-full w-96 border-l shadow-xl z-20 flex flex-col transition-transform duration-300 ease-in-out
@@ -338,9 +517,9 @@ export function StationSidebar({
           </Button>
         </div>
 
-        {/* 新增: 视图切换器 */}
+        {/* Updated view switcher with 3 buttons */}
         <div className="p-2 border-b">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <Button
               variant={activeView === "details" ? "secondary" : "ghost"}
               onClick={() => setActiveView("details")}
@@ -355,13 +534,20 @@ export function StationSidebar({
             >
               场景统计
             </Button>
+            <Button
+              variant={activeView === "assistant" ? "secondary" : "ghost"}
+              onClick={() => setActiveView("assistant")}
+              size="sm"
+            >
+              基米助手
+            </Button>
           </div>
         </div>
 
-        {/* 内容区域 */}
+        {/* Content area with all three views */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {activeView === "stats" && <SceneStatisticsView stats={sceneStatistics} />}
-
+          {activeView === "assistant" && <MapAssistantView sceneStatistics={sceneStatistics} />} {/* Pass sceneStatistics here */}
           {activeView === "details" &&
             (!stationData ? (
               <div className="flex flex-col items-center justify-center h-full text-center space-y-4 pt-16">

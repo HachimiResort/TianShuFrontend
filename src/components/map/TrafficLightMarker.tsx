@@ -17,7 +17,7 @@ export function TrafficLightMarker({
 }: TrafficLightMarkerProps) {
   // 修正版红绿灯SVG（解决荧光问题）
   const TrafficLightIcon = () => {
-    console.log(id)
+    (id)
     return (
       <svg width={size} height={size * 1.5} viewBox="0 0 40 60">
         {/* 灯柱 */}
