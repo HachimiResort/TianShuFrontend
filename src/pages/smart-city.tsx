@@ -3,7 +3,7 @@
 import type React from "react"
 import { TourProvider, useTour } from '@reactour/tour'
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
-import MapReact, { Marker } from "react-map-gl/maplibre"
+import MapReact, { Marker, Popup } from "react-map-gl/maplibre"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -306,7 +306,7 @@ export default function SmartCity() {
 
   // 加载状态
   const [loadingStates, setLoadingStates] = useState({
-    scenes: false,
+  scenes: false,
     locations: false,
     graph: false,
     predictions: false,
@@ -422,6 +422,7 @@ export default function SmartCity() {
         showToast("获取图结构信息失败", "destructive")
         return []
       } finally {
+        console.log("图结构信息加载完成")
         setLoadingStates((prev) => ({ ...prev, graph: false }))
       }
     },
@@ -650,6 +651,7 @@ export default function SmartCity() {
     if (!selectedScene) return
 
     showToast("开始加载数据...", "default")
+    console.log("开始加载数据...")
 
     loadingControllerRef.current.abort = true
     loadingControllerRef.current = { abort: false }
@@ -767,30 +769,74 @@ export default function SmartCity() {
     return { minVelocity, maxVelocity, getColor }
   }, [currentMeasurementData])
 
+  // 在 SmartCity 组件中添加状态
+  const [hoveredMarker, setHoveredMarker] = useState<{
+    location: Location;
+    velocity: number;
+  } | null>(null);
+
+  // 计算拥挤程度并返回等级和颜色
+  const calculateCongestionLevel = useCallback(
+    (velocity: number) => {
+      if (!currentMeasurementData || currentMeasurementData.size === 0) {
+        return { level: "N/A", color: "#808080" };
+      }
+      const { minVelocity, maxVelocity } = getVelocityColorMapping;
+      if (maxVelocity === minVelocity) {
+        return { level: "通常", color: "#3b82f6" }; // 蓝色
+      }
+      const ratio = ((velocity - minVelocity) / (maxVelocity - minVelocity)) * 100;
+      const congestionRatio = 100 - ratio;
+
+      if (congestionRatio < 25) {
+        return { level: "很通畅", color: "#10b981" }; // 绿色
+      } else if (congestionRatio < 50) {
+        return { level: "通畅", color: "#3b82f6" }; // 蓝色
+      } else if (congestionRatio < 75) {
+        return { level: "拥挤", color: "#f59e0b" }; // 黄色
+      } else {
+        return { level: "很拥挤", color: "#ef4444" }; // 红色
+      }
+    },
+    [currentMeasurementData, getVelocityColorMapping]
+  );
+
   // 生成地图上的点标记
   const mapMarkers = useMemo(() => {
-    if (!currentMeasurementData || !locations.length) return []
+    if (!currentMeasurementData || !locations.length) return [];
 
-    return locations.map((location,idx) => {
-      const data = currentMeasurementData.get(location.location_id)
-      const color = data ? getVelocityColorMapping.getColor(data.velocity_record) : "#808080"
+    return locations.map((location, idx) => {
+      const data = currentMeasurementData.get(location.location_id);
+      const color = data ? getVelocityColorMapping.getColor(data.velocity_record) : "#808080";
 
       return (
-        <Marker key={location.location_id} longitude={location.longitude} latitude={location.latitude}>
+        <Marker
+          key={location.location_id}
+          longitude={location.longitude}
+          latitude={location.latitude}
+        >
           <div
             className="w-4 h-4 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-110 transition-transform"
             style={{ backgroundColor: color }}
-            title={`地点 ${location.location_id}: ${data?.velocity_record.toFixed(2) || "N/A"} km/h`}
-            onClick={(e) => {
-              e.stopPropagation()
-              handleStationClick(location)
+            onMouseEnter={() => {
+              if (data) {
+                setHoveredMarker({
+                  location,
+                  velocity: data.velocity_record,
+                });
+              }
             }}
-            data-tour= {idx===20 ? 'marker-0' : undefined}
+            onMouseLeave={() => setHoveredMarker(null)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleStationClick(location);
+            }}
+            data-tour={idx === 20 ? "marker-0" : undefined}
           />
         </Marker>
-      )
-    })
-  }, [currentMeasurementData, locations, getVelocityColorMapping, handleStationClick])
+      );
+    });
+  }, [currentMeasurementData, locations, getVelocityColorMapping, handleStationClick]);
 
   // 生成线条基础结构（只在坐标数据变化时重新计算）
   const lineStructures = useMemo(() => {
@@ -982,6 +1028,35 @@ export default function SmartCity() {
         />
         {mapMarkers}
         {mapLines}
+
+        {/* 悬浮浮窗 */}
+        {hoveredMarker && (
+          <Popup
+            longitude={hoveredMarker.location.longitude}
+            latitude={hoveredMarker.location.latitude}
+            closeButton={false}
+            closeOnClick={false}
+            anchor="bottom"
+            offset={10}
+            className="text-sm"
+          >
+            <div className="space-y-1">
+              <div className="font-medium">站点 {hoveredMarker.location.location_id}</div>
+              <div>速度: {hoveredMarker.velocity.toFixed(2)} km/h</div>
+              <div>
+                拥挤程度:{" "}
+                <span
+                  style={{
+                    color: calculateCongestionLevel(hoveredMarker.velocity).color,
+                    fontWeight: "bold",
+                  }}
+                >
+                  {calculateCongestionLevel(hoveredMarker.velocity).level}
+                </span>
+              </div>
+            </div>
+          </Popup>
+        )}
       </MapReact>
 
       {/* 顶部可折叠状态栏 */}
